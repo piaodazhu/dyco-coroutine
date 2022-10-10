@@ -1,0 +1,12 @@
+{
+	"files.associations": {
+		"dyco_coroutine.h": "c",
+		"queue.h": "c",
+		"setjmp.h": "c",
+		"ucontext.h": "c",
+		"pthread.h": "c",
+		"dlfcn.h": "c",
+		"mman.h": "c",
+		"tcp.h": "c"
+	}
+}

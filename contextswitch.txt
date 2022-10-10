@@ -1,0 +1,17 @@
+context level apis (only be called inside the library):
+void _dyco_getcontext(dycoctx *ctx);
+void _dyco_setcontext(const dycoctx *ctx);
+void _dyco_makecontext(dycoctx *ctx, void (*__func) (void *), void *__arg); // only 1 argument, no ret
+void _dyco_swapcontext(dycoctx *oldctx, const dycoctx *newctx);
+
+coroutine level apis:
+void dyco_coroutine_free(dyco_coroutine *co);
+int dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *arg);
+void dyco_coroutine_yield(dyco_coroutine *co);
+void dyco_coroutine_sleep(uint64_t msecs);
+
+scheduler level apis:
+void dyco_schedule_run(void);
+
+application level apis:
+socket, timerfd, signal...

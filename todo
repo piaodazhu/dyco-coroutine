@@ -1,0 +1,50 @@
+不用poll 直接用epoll
+独立栈，指定栈
+
+
+bug:
+if change to -1, doesn't work
+static int dyco_poll_inner(struct pollfd *fds, nfds_t nfds, int timeout)
+{
+	// timeout: Specifying a negative value  in  timeout  means  an infinite  timeout. Specifying  a timeout of zero causes dyco_poll_inner() to return immediately
+	if (timeout == 0)
+	{
+		return poll(fds, nfds, timeout);
+	}
+
+	dyco_schedule *sched = _get_sched();
+	if (sched == NULL)
+	{
+		printf("scheduler not exit!\n");
+		return -1;
+	}
+
+	dyco_coroutine *co = sched->curr_thread;
+
+	int i = 0;
+	for (i = 0; i < nfds; i++)
+	{
+
+		struct epoll_event ev;
+		ev.events = dyco_pollevent_2epoll(fds[i].events);
+		ev.data.fd = fds[i].fd;
+		epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fds[i].fd, &ev);
+
+		co->events = fds[i].events;
+		dyco_schedule_sched_wait(co, fds[i].fd, fds[i].events, timeout);
+	}
+	dyco_coroutine_yield(co);
+
+	for (i = 0; i < nfds; i++)
+	{
+
+		struct epoll_event ev;
+		ev.events = dyco_pollevent_2epoll(fds[i].events);
+		ev.data.fd = fds[i].fd;
+		epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fds[i].fd, &ev);
+
+		dyco_schedule_desched_wait(fds[i].fd);
+	}
+
+	return nfds;
+}
