@@ -65,6 +65,7 @@ void dyco_coroutine_yield(dyco_coroutine *co) {
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED) == 0) {
 		_save_stack(co);
 	}
+	// printf("yield\n");
 	swapcontext(&co->ctx, &co->sched->ctx);
 }
 
@@ -75,14 +76,18 @@ int dyco_coroutine_resume(dyco_coroutine *co) {
 	else {
 		_load_stack(co);
 	}
+	printf("curco=%d\n", co->id);
 	dyco_schedule *sched = _get_sched();
 	sched->curr_thread = co;
 	swapcontext(&sched->ctx, &co->ctx);
+	// printf("back to sched\n");
 	sched->curr_thread = NULL;
 
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED)) {
 		if (TESTBIT(co->status, COROUTINE_STATUS_DETACH)) {
-			printf("dyco_coroutine_resume --> \n");
+			printf("dyco_coroutine_resume --> %d\n", co->id);
+			dyco_schedule_desched_sleepdown(co);
+			// dyco_schedule_desched_wait(co);
 			dyco_coroutine_free(co);
 		}
 		return -1;
@@ -103,7 +108,7 @@ void dyco_coroutine_renice(dyco_coroutine *co) {
 }
 
 
-void dyco_coroutine_sleep(uint64_t msecs) {
+void dyco_coroutine_sleep(uint32_t msecs) {
 	dyco_coroutine *co = _get_sched()->curr_thread;
 
 	if (msecs == 0) {
@@ -160,7 +165,7 @@ int dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *ar
 
 	co->sched = sched;
 	co->status = BIT(COROUTINE_STATUS_NEW); //
-	co->id = sched->spawned_coroutines ++;
+	co->id = sched->spawned_coroutines++;
 	co->func = func;
 	co->fd = -1;
 	co->events = 0;

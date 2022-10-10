@@ -1,4 +1,7 @@
-不用poll 直接用epoll
+状态跟踪
+// dyco_poll_inner
+sched_wait and sched_down 接口设计不合理
+封装epoll: epoll_create, epoll_wait, epoll_ctl
 独立栈，指定栈
 
 
@@ -48,3 +51,5 @@ static int dyco_poll_inner(struct pollfd *fds, nfds_t nfds, int timeout)
 
 	return nfds;
 }
+
+接口的数据类型 正负数！ 32/64位

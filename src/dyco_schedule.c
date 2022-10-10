@@ -7,26 +7,24 @@ RB_GENERATE(_dyco_coroutine_rbtree_wait, _dyco_coroutine, wait_node, _coroutine_
 				 	RB_EMPTY(&sched->sleeping) && \
 				 	TAILQ_EMPTY(&sched->ready))
 
-// static inline int _schedule_isdone(dyco_schedule *sched)
-// {
-// 	return (RB_EMPTY(&sched->waiting) && 
-// 		RB_EMPTY(&sched->sleeping) && 
-// 		TAILQ_EMPTY(&sched->ready));
-// }
-
 static dyco_coroutine *_schedule_expired(dyco_schedule *sched)
 {
-
+// printf("taga\n");
 	uint64_t t_diff_usecs = _diff_usecs(sched->birth, _usec_now());
 	dyco_coroutine *co = RB_MIN(_dyco_coroutine_rbtree_sleep, &sched->sleeping);
+
 	if (co == NULL)
 		return NULL;
-
+// printf("now: %llu, exp: %llu\n", t_diff_usecs, co->sleep_usecs);
+// printf("tagb\n");
 	if (co->sleep_usecs <= t_diff_usecs)
 	{
 		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
+		CLRBIT(co->status, COROUTINE_STATUS_SLEEPING);
+		printf("sleeptree remove co %d\n", co->id);
 		return co;
 	}
+// printf("tagc\n");
 	return NULL;
 }
 
@@ -96,7 +94,7 @@ dyco_coroutine *_search_wait(dyco_coroutine_rbtree_wait *waiting, int fd)
 	dyco_coroutine find_it = {0};
 	find_it.fd = fd;
 	dyco_coroutine *co = RB_FIND(_dyco_coroutine_rbtree_wait, waiting, &find_it);
-	co->status = 0;
+	// co->status = 0;
 	return co;
 }
 
@@ -157,19 +155,20 @@ int dyco_schedule_create(int stack_size)
 	return 0;
 }
 
-void dyco_schedule_sched_sleepdown(dyco_coroutine *co, uint64_t msecs)
+void dyco_schedule_sched_sleepdown(dyco_coroutine *co, uint32_t msecs)
 {
 	uint64_t usecs = msecs * 1000u;
 
 	dyco_coroutine *co_tmp = RB_FIND(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
 	if (co_tmp != NULL)
 	{
+		printf("**sleeptree remove co %d\n", co->id);
 		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co_tmp);
 	}
 
 	co->sleep_usecs = _diff_usecs(co->sched->birth, _usec_now()) + usecs;
-
-	while (msecs)
+// printf("usec: %llu, now: %llu, exp: %llu\n", usecs, _diff_usecs(co->sched->birth, _usec_now()), co->sleep_usecs);
+	while (msecs) // if msecs == 0, don't sleep
 	{
 		co_tmp = RB_INSERT(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
 		if (co_tmp)
@@ -187,8 +186,10 @@ void dyco_schedule_sched_sleepdown(dyco_coroutine *co, uint64_t msecs)
 
 void dyco_schedule_desched_sleepdown(dyco_coroutine *co)
 {
+	printf("sleeptree want to remove co %d\n", co->id);
 	if (co->status & BIT(COROUTINE_STATUS_SLEEPING))
 	{
+		printf("sleeptree remove co %d\n", co->id);
 		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
 		CLRBIT(co->status, COROUTINE_STATUS_SLEEPING);
 		SETBIT(co->status, COROUTINE_STATUS_READY);
@@ -205,17 +206,22 @@ dyco_coroutine *dyco_schedule_desched_wait(int fd)
 	dyco_schedule *sched = _get_sched();
 
 	dyco_coroutine *co = RB_FIND(_dyco_coroutine_rbtree_wait, &sched->waiting, &find_it);
-	if (co != NULL)
-	{
+	printf("desched wait co %d\n", co->id);
+	assert(co != NULL);
+	// if (co != NULL)
+	// {
 		RB_REMOVE(_dyco_coroutine_rbtree_wait, &co->sched->waiting, co);
-	}
-	co->status = 0;
-	dyco_schedule_desched_sleepdown(co);
+	// }
+	// co->status = 0;
+	CLRBIT(co->status, COROUTINE_STATUS_WAIT_READ);
+	CLRBIT(co->status, COROUTINE_STATUS_WAIT_WRITE);
+
+	// dyco_schedule_desched_sleepdown(co);
 
 	return co;
 }
 
-void dyco_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned short events, uint64_t timeout)
+void dyco_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events, int timeout)
 {
 
 	if (TESTBIT(co->status, COROUTINE_STATUS_WAIT_READ) || TESTBIT(co->status, COROUTINE_STATUS_WAIT_WRITE))
@@ -246,10 +252,9 @@ void dyco_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned short events,
 	assert(co_tmp == NULL);
 
 	// printf("timeout --> %"PRIu64"\n", timeout);
-	if (timeout == 1)
+	if (timeout <= 0)
 		return; // Error
 
-	// TBD: here, just set a timeout, but what to do if it expired?
 	dyco_schedule_sched_sleepdown(co, timeout);
 }
 
@@ -265,12 +270,16 @@ void dyco_schedule_run(void)
 
 		// 1. expired --> sleep rbtree
 		dyco_coroutine *expired = NULL;
+// printf("tag1\n");
 		while ((expired = _schedule_expired(sched)) != NULL)
 		{
+			// printf("tag1-2\n");
 			dyco_coroutine_resume(expired);
+			printf("back from sleep queue\n");
 		}
 		// 2. ready queue
 		dyco_coroutine *last_co_ready = TAILQ_LAST(&sched->ready, _dyco_coroutine_queue);
+// printf("tag2\n");
 		while (!TAILQ_EMPTY(&sched->ready))
 		{
 			dyco_coroutine *co = TAILQ_FIRST(&sched->ready);
@@ -283,12 +292,15 @@ void dyco_schedule_run(void)
 			}
 
 			dyco_coroutine_resume(co);
+			printf("back from ready queue\n");
+			
 			if (co == last_co_ready)
 				break;
 		}
 
 		// 3. wait rbtree
 		_schedule_epoll(sched);
+// printf("tag3\n");
 		while (sched->num_new_events)
 		{
 			int idx = --sched->num_new_events;
@@ -307,12 +319,13 @@ void dyco_schedule_run(void)
 					SETBIT(co->status, COROUTINE_STATUS_FDEOF);
 				}
 				dyco_coroutine_resume(co);
+				printf("back from wait queue\n");
 			}
 
 			is_eof = 0;
 		}
 	}
-
+	printf("sched exit\n");
 	dyco_schedule_free(sched);
 
 	return;

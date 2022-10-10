@@ -29,7 +29,7 @@
 #include "sys_queue.h"
 #include "sys_tree.h"
 
-#define COROUTINE_HOOK
+// #define COROUTINE_HOOK
 
 #define DYCO_MAX_EVENTS		(1024 * 1024)
 #define DYCO_MAX_STACKSIZE		(128 * 1024) // {http: 16*1024, tcp: 4*1024}
@@ -132,7 +132,7 @@ struct _dyco_coroutine
 
 	// events
 	int 			fd;
-	unsigned short 		events; // POLL_EVENT
+	unsigned int 		events; // EPOLL_EVENT
 	struct pollfd 		*pfds;
 	nfds_t 			nfds;
 
@@ -141,47 +141,6 @@ struct _dyco_coroutine
 	RB_ENTRY(_dyco_coroutine) 	wait_node;
 	TAILQ_ENTRY(_dyco_coroutine) 	ready_next;
 };
-
-
-int dyco_coroutine_resume(dyco_coroutine *co);
-void dyco_coroutine_free(dyco_coroutine *co);
-int dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *arg);
-void dyco_coroutine_yield(dyco_coroutine *co);
-void dyco_coroutine_sleep(uint64_t msecs);
-
-
-void dyco_schedule_sched_sleepdown(dyco_coroutine *co, uint64_t msecs);
-void dyco_schedule_desched_sleepdown(dyco_coroutine *co);
-void dyco_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned short events, uint64_t timeout);
-dyco_coroutine *dyco_schedule_desched_wait(int fd);
-
-
-void dyco_schedule_run(void);
-
-// typedef enum
-// {
-// 	COROUTINE_EV_READ,
-// 	COROUTINE_EV_WRITE
-// } dyco_coroutine_event;
-// void dyco_schedule_cancel_event(dyco_coroutine *co);
-// void dyco_schedule_sched_event(dyco_coroutine *co, int fd, dyco_coroutine_event e, uint64_t timeout);
-
-
-int dyco_epoll_create(void);
-int dyco_epoll_ev_register_trigger(void);
-int dyco_epoll_wait(struct timespec t);
-
-int dyco_socket(int domain, int type, int protocol);
-int dyco_accept(int fd, struct sockaddr *addr, socklen_t *len);
-ssize_t dyco_recv(int fd, void *buf, size_t len, int flags);
-ssize_t dyco_send(int fd, const void *buf, size_t len, int flags);
-int dyco_close(int fd);
-int dyco_poll(struct pollfd *fds, nfds_t nfds, int timeout);
-int dyco_connect(int fd, struct sockaddr *name, socklen_t namelen);
-ssize_t dyco_sendto(int fd, const void *buf, size_t len, int flags,
-		    const struct sockaddr *dest_addr, socklen_t addrlen);
-ssize_t dyco_recvfrom(int fd, void *buf, size_t len, int flags,
-		      struct sockaddr *src_addr, socklen_t *addrlen);
 
 
 static inline dyco_schedule *_get_sched(void)
@@ -221,42 +180,78 @@ static inline int _coroutine_wait_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
 		return 1;
 }
 
-#ifdef COROUTINE_HOOK
+// coroutine api
+int dyco_coroutine_resume(dyco_coroutine *co);
+void dyco_coroutine_free(dyco_coroutine *co);
+int dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *arg);
+void dyco_coroutine_yield(dyco_coroutine *co);
+void dyco_coroutine_sleep(uint32_t msecs);
+
+// schedular api
+void dyco_schedule_sched_sleepdown(dyco_coroutine *co, uint32_t msecs);
+void dyco_schedule_desched_sleepdown(dyco_coroutine *co);
+void dyco_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events, int timeout);
+dyco_coroutine *dyco_schedule_desched_wait(int fd);
+void dyco_schedule_run(void);
+
+
+// epoll api
+int dyco_epoll_create(void);
+int dyco_epoll_ev_register_trigger(void);
+int dyco_epoll_wait(struct timespec t);
+
+
+// socket api wrapper
+
+#ifndef COROUTINE_HOOK
+
+int dyco_socket(int domain, int type, int protocol);
+
+int dyco_close(int fd);
+
+int dyco_accept(int fd, struct sockaddr *addr, socklen_t *len);
+
+int dyco_connect(int fd, struct sockaddr *name, socklen_t namelen);
+
+ssize_t dyco_send(int fd, const void *buf, size_t len, int flags);
+
+ssize_t dyco_recv(int fd, void *buf, size_t len, int flags);
+
+ssize_t dyco_sendto(int fd, const void *buf, size_t len, int flags,
+		    const struct sockaddr *dest_addr, socklen_t addrlen);
+
+ssize_t dyco_recvfrom(int fd, void *buf, size_t len, int flags,
+		      struct sockaddr *src_addr, socklen_t *addrlen);
+
+#else
 
 typedef int (*socket_t)(int domain, int type, int protocol);
 extern socket_t socket_f;
 
+typedef int (*close_t)(int);
+extern close_t close_f;
+
+typedef int (*accept_t)(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+extern accept_t accept_f;
+
 typedef int (*connect_t)(int, const struct sockaddr *, socklen_t);
 extern connect_t connect_f;
 
-typedef ssize_t (*read_t)(int, void *, size_t);
-extern read_t read_f;
+typedef ssize_t (*send_t)(int sockfd, const void *buf, size_t len, int flags);
+extern send_t send_f;
 
 typedef ssize_t (*recv_t)(int sockfd, void *buf, size_t len, int flags);
 extern recv_t recv_f;
-
-typedef ssize_t (*recvfrom_t)(int sockfd, void *buf, size_t len, int flags,
-			      struct sockaddr *src_addr, socklen_t *addrlen);
-extern recvfrom_t recvfrom_f;
-
-typedef ssize_t (*write_t)(int, const void *, size_t);
-extern write_t write_f;
-
-typedef ssize_t (*send_t)(int sockfd, const void *buf, size_t len, int flags);
-extern send_t send_f;
 
 typedef ssize_t (*sendto_t)(int sockfd, const void *buf, size_t len, int flags,
 			    const struct sockaddr *dest_addr, socklen_t addrlen);
 extern sendto_t sendto_f;
 
-typedef int (*accept_t)(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
-extern accept_t accept_f;
-
-typedef int (*close_t)(int);
-extern close_t close_f;
+typedef ssize_t (*recvfrom_t)(int sockfd, void *buf, size_t len, int flags,
+			      struct sockaddr *src_addr, socklen_t *addrlen);
+extern recvfrom_t recvfrom_f;
 
 int init_hook(void);
-
 
 #endif
 

@@ -59,22 +59,25 @@ void server_reader(void *arg) {
 	struct pollfd fds;
 	fds.fd = fd;
 	fds.events = POLLIN;
-
+	printf("server_reader start\n");
 	while (1) {
 		
 		char buf[1024] = {0};
 		ret = dyco_recv(fd, buf, 1024, 0);
 		if (ret > 0) {
 			if(fd > MAX_CLIENT_NUM) 
+				abort();
 			printf("read from server: %.*s\n", ret, buf);
 
 			ret = dyco_send(fd, buf, strlen(buf), 0);
 			if (ret == -1) {
 				dyco_close(fd);
+				printf("server_reader send failed: fd=%d\n",fd);
 				break;
 			}
 		} else if (ret == 0) {	
 			dyco_close(fd);
+			printf("server_reader close: fd=%d\n",fd);
 			break;
 		}
 
@@ -106,6 +109,7 @@ void server(void *arg) {
 	while (1) {
 		socklen_t len = sizeof(struct sockaddr_in);
 		int cli_fd = dyco_accept(fd, (struct sockaddr*)&remote, &len);
+		// printf("tag5:fd=%d, mod=%d\n",cli_fd, fd % 1000);
 		if (cli_fd % 1000 == 999) {
 
 			struct timeval tv_cur;

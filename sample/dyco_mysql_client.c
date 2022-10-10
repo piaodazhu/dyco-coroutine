@@ -33,7 +33,7 @@ void func (void *arg) {
 }
 
 int main() {
-#if 1
+#if 0
 	init_hook();
 
 	dyco_coroutine *co = NULL;
