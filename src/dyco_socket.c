@@ -4,9 +4,6 @@
 #define TIMEOUT_INFINIT		-1
 #define TIMEOUT_NONE		0
 
-#define EV_POLL_EPOLL(x)	((uint32_t)(x) | EPOLLET)
-#define EV_EPOLL_POLL(x)	((uint16_t)((x) & 0xffff))
-
 static int
 _wait_events(int fd, unsigned int events, int timeout)
 {
@@ -16,7 +13,7 @@ _wait_events(int fd, unsigned int events, int timeout)
 	int fastret = 0;
 	struct pollfd pfd;
 	pfd.fd = fd;
-	pfd.events = EV_EPOLL_POLL(events);
+	pfd.events = (uint16_t)(events & 0xffff);
 	if ((fastret = poll(&pfd, 1, 0)) != 0) {
 		return fastret;
 	}
@@ -37,13 +34,13 @@ _wait_events(int fd, unsigned int events, int timeout)
 	ev.data.fd = fd;
 	ev.events = events;
 	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fd, &ev);
-	dyco_schedule_sched_wait(co, fd, events);
-	dyco_schedule_sched_sleepdown(co, timeout);
+	_schedule_sched_wait(co, fd, events);
+	_schedule_sched_sleep(co, timeout);
 
 	_yield(co);
 
-	dyco_schedule_desched_sleepdown(co);
-	dyco_schedule_desched_wait(co, fd);
+	_schedule_cancel_sleep(co);
+	_schedule_cancel_wait(co, fd);
 	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, &ev);
 
 	return 0;
@@ -72,7 +69,6 @@ dyco_accept(int fd, struct sockaddr *addr, socklen_t *len)
 {
 	int sockfd = -1;
 	int timeout = TIMEOUT_INFINIT;
-	dyco_coroutine *co = _get_sched()->curr_thread;
 
 	while (1)
 	{
@@ -148,7 +144,7 @@ dyco_recv(int fd, void *buf, size_t len, int flags)
 {
 	int timeout = TIMEOUT_DEFAULT;
 
-	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
 	int ret = recv(fd, buf, len, flags);
 
@@ -161,7 +157,7 @@ dyco_recvfrom(int fd, void *buf, size_t len, int flags,
 {
 	int timeout = TIMEOUT_DEFAULT;
 
-	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
 	int ret = recvfrom(fd, buf, len, flags, src_addr, addrlen);
 	return ret;
@@ -181,7 +177,7 @@ dyco_send(int fd, const void *buf, size_t len, int flags)
 
 	while (sent < len)
 	{
-		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 		
 		ret = send(fd, ((char *)buf) + sent, len - sent, flags);
 		if (ret <= 0)
@@ -221,7 +217,7 @@ dyco_sendto(int fd, const void *buf, size_t len, int flags,
 
 	while (sent < len)
 	{
-		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 
 		ret = sendto(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
 		if (ret <= 0)
@@ -315,7 +311,6 @@ accept(int fd, struct sockaddr *addr, socklen_t *len)
 
 	int sockfd = -1;
 	int timeout = TIMEOUT_INFINIT;
-	dyco_coroutine *co = _get_sched()->curr_thread;
 
 	while (1)
 	{
@@ -400,7 +395,7 @@ recv(int fd, void *buf, size_t len, int flags)
 
 	int timeout = TIMEOUT_DEFAULT;
 
-	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
 	int ret = recv(fd, buf, len, flags);
 
@@ -417,7 +412,7 @@ recvfrom(int fd, void *buf, size_t len, int flags,
 
 	int timeout = TIMEOUT_DEFAULT;
 
-	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
 	int ret = recvfrom(fd, buf, len, flags, src_addr, addrlen);
 	return ret;
@@ -441,7 +436,7 @@ send(int fd, const void *buf, size_t len, int flags)
 
 	while (sent < len)
 	{
-		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 		
 		ret = send(fd, ((char *)buf) + sent, len - sent, flags);
 		if (ret <= 0)
@@ -482,7 +477,7 @@ sendto(int sockfd, const void *buf, size_t len, int flags,
 
 	while (sent < len)
 	{
-		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 
 		ret = sendto(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
 		if (ret <= 0)

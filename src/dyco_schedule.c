@@ -128,7 +128,7 @@ dyco_schedule_create(int stack_size)
 	return 0;
 }
 
-void dyco_schedule_sched_sleepdown(dyco_coroutine *co, int msecs)
+void _schedule_sched_sleep(dyco_coroutine *co, int msecs)
 {
 	dyco_coroutine *co_tmp = RB_FIND(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
 	if (co_tmp != NULL)
@@ -157,7 +157,7 @@ void dyco_schedule_sched_sleepdown(dyco_coroutine *co, int msecs)
 }
 
 void
-dyco_schedule_desched_sleepdown(dyco_coroutine *co)
+_schedule_cancel_sleep(dyco_coroutine *co)
 {
 	if (TESTBIT(co->status, COROUTINE_STATUS_SLEEPING))
 	{
@@ -169,7 +169,7 @@ dyco_schedule_desched_sleepdown(dyco_coroutine *co)
 }
 
 dyco_coroutine*
-dyco_schedule_desched_wait(dyco_coroutine *co, int fd)
+_schedule_cancel_wait(dyco_coroutine *co, int fd)
 {
 	if (co == NULL) return NULL;
 
@@ -180,7 +180,7 @@ dyco_schedule_desched_wait(dyco_coroutine *co, int fd)
 }
 
 void
-dyco_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events)
+_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events)
 {
 	co->fd = fd;
 	co->events = events;

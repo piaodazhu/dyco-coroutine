@@ -8,6 +8,7 @@
 		"dlfcn.h": "c",
 		"mman.h": "c",
 		"tcp.h": "c",
-		"limits": "c"
+		"limits": "c",
+		"timerfd.h": "c"
 	}
 }

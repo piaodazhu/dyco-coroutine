@@ -180,10 +180,10 @@ void dyco_coroutine_free(dyco_coroutine *co);
 void dyco_coroutine_sleep(uint32_t msecs);
 
 // schedular api
-void dyco_schedule_sched_sleepdown(dyco_coroutine *co, int msecs);
-void dyco_schedule_desched_sleepdown(dyco_coroutine *co);
-void dyco_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events);
-dyco_coroutine *dyco_schedule_desched_wait(dyco_coroutine *co, int fd);
+void _schedule_sched_sleep(dyco_coroutine *co, int msecs);
+void _schedule_cancel_sleep(dyco_coroutine *co);
+void _schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events);
+dyco_coroutine *_schedule_cancel_wait(dyco_coroutine *co, int fd);
 
 void dyco_schedule_run(void);
 

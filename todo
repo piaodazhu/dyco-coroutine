@@ -1,6 +1,8 @@
 状态跟踪:
-	new and ready keep one
+	// new and ready keep one
 fd need close
+schedule coro initializer
+management
 // too much get_sched useless
 // dyco_poll_inner
 // sched_wait and sched_down 接口设计不合理
@@ -37,7 +39,7 @@ static int dyco_poll_inner(struct pollfd *fds, nfds_t nfds, int timeout)
 		epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fds[i].fd, &ev);
 
 		co->events = fds[i].events;
-		dyco_schedule_sched_wait(co, fds[i].fd, fds[i].events, timeout);
+		_schedule_sched_wait(co, fds[i].fd, fds[i].events, timeout);
 	}
 	_yield(co);
 
@@ -49,7 +51,7 @@ static int dyco_poll_inner(struct pollfd *fds, nfds_t nfds, int timeout)
 		ev.data.fd = fds[i].fd;
 		epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fds[i].fd, &ev);
 
-		dyco_schedule_desched_wait(fds[i].fd);
+		_schedule_cancel_wait(fds[i].fd);
 	}
 
 	return nfds;
