@@ -15,7 +15,6 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <sys/time.h>
-// #include <sys/mman.h>
 #include <netinet/tcp.h>
 
 #include <ucontext.h>
@@ -62,15 +61,7 @@ typedef enum
 	COROUTINE_STATUS_RUNNING, // *
 	COROUTINE_STATUS_WAITING, // *
 	COROUTINE_STATUS_SLEEPING, // *
-	COROUTINE_STATUS_EXPIRED, // *
-	COROUTINE_STATUS_FDEOF,
-	COROUTINE_STATUS_DETACH,
-	COROUTINE_STATUS_CANCELLED,
-	COROUTINE_STATUS_PENDING_RUNCOMPUTE,
-	COROUTINE_STATUS_RUNCOMPUTE,
-	COROUTINE_STATUS_WAIT_IO_READ,
-	COROUTINE_STATUS_WAIT_IO_WRITE,
-	COROUTINE_STATUS_WAIT_MULTI
+	COROUTINE_STATUS_EXPIRED
 } dyco_coroutine_status;
 
 struct _dyco_schedule
@@ -80,7 +71,6 @@ struct _dyco_schedule
 	
 	// events
 	int			epollfd;
-	int 			eventfd;
 	struct epoll_event	eventlist[DYCO_MAX_EVENTS];
 
 	// stack

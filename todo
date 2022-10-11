@@ -4,7 +4,7 @@ fd need close
 // too much get_sched useless
 // dyco_poll_inner
 // sched_wait and sched_down 接口设计不合理
-封装epoll: epoll_create, epoll_wait, epoll_ctl
+封装epoll: epoll_create, epoll_wait, epoll_ctl, epoll_close
 独立栈，指定栈
 
 
