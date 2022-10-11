@@ -75,12 +75,13 @@ static int _wait_events(int fd, unsigned int events, int timeout)
 	ev.data.fd = fd;
 	ev.events = events;
 	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fd, &ev);
-	dyco_schedule_sched_wait(co, fd, events, timeout);
+	dyco_schedule_sched_wait(co, fd, events);
+	dyco_schedule_sched_sleepdown(co, timeout);
 
-	dyco_coroutine_yield(co);
+	_yield(co);
 
-	dyco_schedule_desched_wait(fd);
-	// dyco_schedule_desched_sleepdown(co);
+	dyco_schedule_desched_sleepdown(co);
+	dyco_schedule_desched_wait(co, fd);
 	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, &ev);
 
 	return 0;
@@ -118,7 +119,7 @@ static int _wait_events(int fd, unsigned int events, int timeout)
 // // printf("tag0\n");
 // 		dyco_schedule_sched_wait(co, fds[i].fd, ev.events, timeout);
 // 	}
-// 	dyco_coroutine_yield(co);
+// 	_yield(co);
 // // printf("tag1\n");
 // 	for (i = 0; i < nfds; i++) {
 // 		struct epoll_event ev;

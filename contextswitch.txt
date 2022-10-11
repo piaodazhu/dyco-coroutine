@@ -7,7 +7,7 @@ void _dyco_swapcontext(dycoctx *oldctx, const dycoctx *newctx);
 coroutine level apis:
 void dyco_coroutine_free(dyco_coroutine *co);
 int dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *arg);
-void dyco_coroutine_yield(dyco_coroutine *co);
+void _yield(dyco_coroutine *co);
 void dyco_coroutine_sleep(uint64_t msecs);
 
 scheduler level apis:

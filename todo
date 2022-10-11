@@ -1,6 +1,9 @@
-状态跟踪
+状态跟踪:
+	new and ready keep one
+fd need close
+// too much get_sched useless
 // dyco_poll_inner
-sched_wait and sched_down 接口设计不合理
+// sched_wait and sched_down 接口设计不合理
 封装epoll: epoll_create, epoll_wait, epoll_ctl
 独立栈，指定栈
 
@@ -36,7 +39,7 @@ static int dyco_poll_inner(struct pollfd *fds, nfds_t nfds, int timeout)
 		co->events = fds[i].events;
 		dyco_schedule_sched_wait(co, fds[i].fd, fds[i].events, timeout);
 	}
-	dyco_coroutine_yield(co);
+	_yield(co);
 
 	for (i = 0; i < nfds; i++)
 	{

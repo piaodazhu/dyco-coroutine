@@ -54,14 +54,15 @@ typedef struct _dyco_coroutine dyco_coroutine;
 typedef void (*proc_coroutine)(void *);
 typedef enum
 {
-	COROUTINE_STATUS_WAIT_READ,
-	COROUTINE_STATUS_WAIT_WRITE,
-	COROUTINE_STATUS_NEW,
-	COROUTINE_STATUS_READY,
-	COROUTINE_STATUS_EXITED,
-	COROUTINE_STATUS_BUSY,
-	COROUTINE_STATUS_SLEEPING,
-	COROUTINE_STATUS_EXPIRED,
+	// COROUTINE_STATUS_WAIT_READ,
+	// COROUTINE_STATUS_WAIT_WRITE,
+	COROUTINE_STATUS_NEW, // *
+	COROUTINE_STATUS_READY, // *
+	COROUTINE_STATUS_EXITED, // *
+	COROUTINE_STATUS_RUNNING, // *
+	COROUTINE_STATUS_WAITING, // *
+	COROUTINE_STATUS_SLEEPING, // *
+	COROUTINE_STATUS_EXPIRED, // *
 	COROUTINE_STATUS_FDEOF,
 	COROUTINE_STATUS_DETACH,
 	COROUTINE_STATUS_CANCELLED,
@@ -91,7 +92,8 @@ struct _dyco_schedule
 	uint64_t		birth;
 
 	// dynamic info
-	int			spawned_coroutines;
+	int			coro_count;
+	unsigned int		_id_gen;
 	int 			num_new_events;
 	dyco_coroutine 		*curr_thread;
 
@@ -118,28 +120,26 @@ struct _dyco_coroutine
 
 	// dynamic info
 	dyco_coroutine_status 	status;
-	uint32_t 		ops;
+	uint32_t 		sched_count;
 	uint64_t 		sleep_usecs;
 
 	// static info
 	// ownstack: set 1 to use co->stack when running, set 0 to use sched-stack.
-	uint64_t 		id;
-	char 			funcname[64];
+	unsigned int 		id;
 	unsigned int		ownstack; 
 
 	// user customized data
 	void 			*data;
 
 	// events
-	int 			fd;
-	unsigned int 		events; // EPOLL_EVENT
-	struct pollfd 		*pfds;
-	nfds_t 			nfds;
-
+	unsigned int 		events; 	// for single event
+	int 			fd;		// for single event
+	int			epollfd;	// for IO multiplexing 
+	
 	// container node
+	TAILQ_ENTRY(_dyco_coroutine) 	ready_next;
 	RB_ENTRY(_dyco_coroutine) 	sleep_node;
 	RB_ENTRY(_dyco_coroutine) 	wait_node;
-	TAILQ_ENTRY(_dyco_coroutine) 	ready_next;
 };
 
 
@@ -181,17 +181,20 @@ static inline int _coroutine_wait_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
 }
 
 // coroutine api
-int dyco_coroutine_resume(dyco_coroutine *co);
-void dyco_coroutine_free(dyco_coroutine *co);
+int _resume(dyco_coroutine *co);
+void _yield(dyco_coroutine *co);
+
+static void dyco_coroutine_init(dyco_coroutine *co);
 int dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *arg);
-void dyco_coroutine_yield(dyco_coroutine *co);
+void dyco_coroutine_free(dyco_coroutine *co);
 void dyco_coroutine_sleep(uint32_t msecs);
 
 // schedular api
-void dyco_schedule_sched_sleepdown(dyco_coroutine *co, uint32_t msecs);
+void dyco_schedule_sched_sleepdown(dyco_coroutine *co, int msecs);
 void dyco_schedule_desched_sleepdown(dyco_coroutine *co);
-void dyco_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events, int timeout);
-dyco_coroutine *dyco_schedule_desched_wait(int fd);
+void dyco_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events);
+dyco_coroutine *dyco_schedule_desched_wait(dyco_coroutine *co, int fd);
+
 void dyco_schedule_run(void);
 
 

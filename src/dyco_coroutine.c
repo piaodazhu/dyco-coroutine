@@ -2,7 +2,19 @@
 
 pthread_key_t global_sched_key;
 static pthread_once_t sched_key_once = PTHREAD_ONCE_INIT;
+extern int dyco_schedule_create(int stack_size);
 
+static void 
+dyco_coroutine_sched_key_destructor(void *data) {
+	free(data);
+}
+
+static void 
+dyco_coroutine_sched_key_creator(void) {
+	assert(pthread_key_create(&global_sched_key, dyco_coroutine_sched_key_destructor) == 0);
+	assert(pthread_setspecific(global_sched_key, NULL) == 0);
+	return;
+}
 
 static void
 _save_stack(dyco_coroutine *co) {
@@ -22,31 +34,69 @@ _load_stack(dyco_coroutine *co) {
 	memcpy(co->sched->stack + co->sched->stack_size - co->stack_size, co->stack, co->stack_size);
 }
 
-static void _exec(void *lt) {
+static void 
+_exec(void *lt) {
 	dyco_coroutine *co = (dyco_coroutine*)lt;
 	co->func(co->arg);
-	co->status |= (BIT(COROUTINE_STATUS_EXITED) | BIT(COROUTINE_STATUS_FDEOF) | BIT(COROUTINE_STATUS_DETACH));
-	dyco_coroutine_yield(co);
+	SETBIT(co->status, COROUTINE_STATUS_EXITED);
+	// co->status |= (BIT(COROUTINE_STATUS_EXITED) | BIT(COROUTINE_STATUS_FDEOF) | BIT(COROUTINE_STATUS_DETACH));
+	_yield(co);
 }
 
-extern int dyco_schedule_create(int stack_size);
-
-void dyco_coroutine_free(dyco_coroutine *co) {
-	if (co == NULL) return ;
-	co->sched->spawned_coroutines --;
-
-	if (co->stack) {
-		free(co->stack);
-		co->stack = NULL;
+void 
+_yield(dyco_coroutine *co) {
+	// co->ops = 0;
+	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED) == 0) {
+		_save_stack(co);
 	}
-
-	if (co) {
-		free(co);
-	}
-
+	// printf("yield\n");
+	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
+	swapcontext(&co->ctx, &co->sched->ctx);
+	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
 }
 
-static void dyco_coroutine_init(dyco_coroutine *co) {
+int 
+_resume(dyco_coroutine *co) {
+	if (TESTBIT(co->status, COROUTINE_STATUS_NEW)) {
+		dyco_coroutine_init(co);
+	}
+	else {
+		_load_stack(co);
+	}
+
+	printf("-- resume coro %d --\n", co->id);
+	dyco_schedule *sched = co->sched;
+	
+	sched->curr_thread = co;
+	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
+	swapcontext(&sched->ctx, &co->ctx);
+	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
+	sched->curr_thread = NULL;
+
+	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED)) {
+		printf("** finish coro %d **\n", co->id);
+		dyco_schedule_desched_sleepdown(co);
+		// dyco_schedule_desched_wait(co);
+		dyco_coroutine_free(co);
+		return -1;
+	} 
+	return 0;
+}
+
+void 
+dyco_coroutine_sleep(uint32_t msecs) {
+	dyco_coroutine *co = _get_sched()->curr_thread;
+	if (msecs == 0) {
+		SETBIT(co->status, COROUTINE_STATUS_READY);
+		TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
+	} else {
+		dyco_schedule_sched_sleepdown(co, msecs);
+	}
+	_yield(co);
+}
+
+static void 
+dyco_coroutine_init(dyco_coroutine *co) {
 
 	getcontext(&co->ctx);
 	co->ctx.uc_stack.ss_sp = co->sched->stack;
@@ -56,90 +106,13 @@ static void dyco_coroutine_init(dyco_coroutine *co) {
 	makecontext(&co->ctx, (void (*)(void)) _exec, 1, (void*)co);
 	// printf("TAG22\n");
 
-	co->status = BIT(COROUTINE_STATUS_READY);
-	
+	// co->status = BIT(COROUTINE_STATUS_READY);
+	CLRBIT(co->status, COROUTINE_STATUS_NEW);
+	return;
 }
 
-void dyco_coroutine_yield(dyco_coroutine *co) {
-	co->ops = 0;
-	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED) == 0) {
-		_save_stack(co);
-	}
-	// printf("yield\n");
-	swapcontext(&co->ctx, &co->sched->ctx);
-}
-
-int dyco_coroutine_resume(dyco_coroutine *co) {
-	if (TESTBIT(co->status, COROUTINE_STATUS_NEW)) {
-		dyco_coroutine_init(co);
-	} 	
-	else {
-		_load_stack(co);
-	}
-	printf("curco=%d\n", co->id);
-	dyco_schedule *sched = _get_sched();
-	sched->curr_thread = co;
-	swapcontext(&sched->ctx, &co->ctx);
-	// printf("back to sched\n");
-	sched->curr_thread = NULL;
-
-	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED)) {
-		if (TESTBIT(co->status, COROUTINE_STATUS_DETACH)) {
-			printf("dyco_coroutine_resume --> %d\n", co->id);
-			dyco_schedule_desched_sleepdown(co);
-			// dyco_schedule_desched_wait(co);
-			dyco_coroutine_free(co);
-		}
-		return -1;
-	} 
-	return 0;
-}
-
-
-void dyco_coroutine_renice(dyco_coroutine *co) {
-	co->ops ++;
-
-	if (co->ops < 5) return ;
-
-	printf("dyco_coroutine_renice\n");
-	TAILQ_INSERT_TAIL(&_get_sched()->ready, co, ready_next);
-	printf("dyco_coroutine_renice 111\n");
-	dyco_coroutine_yield(co);
-}
-
-
-void dyco_coroutine_sleep(uint32_t msecs) {
-	dyco_coroutine *co = _get_sched()->curr_thread;
-
-	if (msecs == 0) {
-		TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
-		dyco_coroutine_yield(co);
-	} else {
-		dyco_schedule_sched_sleepdown(co, msecs);
-	}
-}
-
-void dyco_coroutine_detach(void) {
-	dyco_coroutine *co = _get_sched()->curr_thread;
-	SETBIT(co->status, COROUTINE_STATUS_DETACH);
-}
-
-static void dyco_coroutine_sched_key_destructor(void *data) {
-	free(data);
-}
-
-static void dyco_coroutine_sched_key_creator(void) {
-	assert(pthread_key_create(&global_sched_key, dyco_coroutine_sched_key_destructor) == 0);
-	assert(pthread_setspecific(global_sched_key, NULL) == 0);
-	
-	return ;
-}
-
-
-// coroutine --> 
-// create 
-//
-int dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *arg) {
+int 
+dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *arg) {
 
 	assert(pthread_once(&sched_key_once, dyco_coroutine_sched_key_creator) == 0);
 	dyco_schedule *sched = _get_sched();
@@ -160,23 +133,52 @@ int dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *ar
 		return -2;
 	}
 
+	co->func = func;
+	co->arg = arg;
+
+	co->sched = sched;
+
 	co->stack = NULL;
 	co->stack_size = 0;
 
-	co->sched = sched;
-	co->status = BIT(COROUTINE_STATUS_NEW); //
-	co->id = sched->spawned_coroutines++;
-	co->func = func;
-	co->fd = -1;
-	co->events = 0;
-	co->arg = arg;
-	*new_co = co;
+	
+	co->status = BIT(COROUTINE_STATUS_NEW) | BIT(COROUTINE_STATUS_READY);
+	co->sched_count = 0;
 
+	co->id = sched->_id_gen++;
+	co->ownstack = 0;
+
+	co->data = NULL;
+
+	co->events = 0;
+	co->fd = -1;
+	co->epollfd = -1;
+	
+	*new_co = co;
+	++sched->coro_count;
 	TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
 
 	return 0;
 }
 
+void 
+dyco_coroutine_free(dyco_coroutine *co) {
+	if (co == NULL) return;
+	--co->sched->coro_count;
+
+	if (co->stack) {
+		free(co->stack);
+		co->stack = NULL;
+	}
+	if (co->data) {
+		free(co->data);
+		co->data = NULL;
+	}
+	if (co) {
+		free(co);
+	}
+	return;
+}
 
 
 

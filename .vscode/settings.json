@@ -7,6 +7,7 @@
 		"pthread.h": "c",
 		"dlfcn.h": "c",
 		"mman.h": "c",
-		"tcp.h": "c"
+		"tcp.h": "c",
+		"limits": "c"
 	}
 }
