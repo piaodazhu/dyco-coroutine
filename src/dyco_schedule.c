@@ -19,7 +19,7 @@ _schedule_get_expired(dyco_schedule *sched)
 	{
 		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
 		CLRBIT(co->status, COROUTINE_STATUS_SLEEPING);
-		SETBIT(co->status, COROUTINE_STATUS_EXPIRED);
+		SETBIT(co->status, COROUTINE_FLAGS_EXPIRED);
 		printf("sleeptree remove co %d\n", co->id);
 		return co;
 	}
@@ -51,7 +51,7 @@ _schedule_epoll_wait(dyco_schedule *sched)
 	int nready = -1;
 	while (1)
 	{
-		nready = epoll_wait(sched->epollfd, sched->eventlist, DYCO_MAX_EVENTS, timeout/1000);
+		nready = epoll_wait_f(sched->epollfd, sched->eventlist, DYCO_MAX_EVENTS, timeout/1000);
 		if (nready == -1)
 		{
 			if (errno == EINTR)
@@ -120,6 +120,8 @@ dyco_schedule_create(int stack_size)
 	sched->birth = _usec_now();
 	sched->coro_count = 0;
 	sched->_id_gen = 0;
+	sched->num_new_events = 0;
+	sched->curr_thread = NULL;
 	
 	TAILQ_INIT(&sched->ready);
 	RB_INIT(&sched->sleeping);
@@ -149,7 +151,7 @@ void _schedule_sched_sleep(dyco_coroutine *co, int msecs)
 			continue;
 		}
 		SETBIT(co->status, COROUTINE_STATUS_SLEEPING);
-		CLRBIT(co->status, COROUTINE_STATUS_EXPIRED);
+		CLRBIT(co->status, COROUTINE_FLAGS_EXPIRED);
 		break;
 	}
 
@@ -173,8 +175,11 @@ _schedule_cancel_wait(dyco_coroutine *co, int fd)
 {
 	if (co == NULL) return NULL;
 
+	int tmpfd = co->fd;
+	co->fd = fd;
 	RB_REMOVE(_dyco_coroutine_rbtree_wait, &co->sched->waiting, co);
-	CLRBIT(co->status, COROUTINE_STATUS_WAITING);
+	CLRBIT(co->status, COROUTINE_FLAGS_WAITING);
+	co->fd = tmpfd;
 
 	return co;
 }
@@ -186,7 +191,7 @@ _schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events)
 	co->events = events;
 
 	dyco_coroutine *co_tmp = RB_INSERT(_dyco_coroutine_rbtree_wait, &co->sched->waiting, co);
-	SETBIT(co->status, COROUTINE_STATUS_WAITING);
+	SETBIT(co->status, COROUTINE_FLAGS_WAITING);
 	assert(co_tmp == NULL);
 
 	return;

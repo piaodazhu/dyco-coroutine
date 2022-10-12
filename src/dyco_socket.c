@@ -10,25 +10,22 @@ _wait_events(int fd, unsigned int events, int timeout)
 	// events: uint32 epoll event
 	// timeout: Specifying a negative value  in  timeout  means  an infinite  timeout. Specifying  a timeout of zero causes dyco_poll_inner() to return immediately
 	
-	int fastret = 0;
+	// fast return
 	struct pollfd pfd;
 	pfd.fd = fd;
-	pfd.events = (uint16_t)(events & 0xffff);
-	if ((fastret = poll(&pfd, 1, 0)) != 0) {
-		return fastret;
-	}
-
+	pfd.events = POLLIN | POLLERR | POLLHUP;
 	if (timeout == 0) {
-		return fastret;
+		return poll(&pfd, 1, 0);
 	}
 
 	dyco_schedule *sched = _get_sched();
 	if (sched == NULL) {
-		printf("dyco_poll_inner() no scheduler!\n");
-		abort();
+		return -1;
 	}
-
 	dyco_coroutine *co = sched->curr_thread;
+	if (co == NULL) {
+		return -1;
+	}
 
 	struct epoll_event ev;
 	ev.data.fd = fd;
@@ -49,7 +46,7 @@ _wait_events(int fd, unsigned int events, int timeout)
 int
 dyco_socket(int domain, int type, int protocol)
 {
-	int fd = socket(domain, type, protocol);
+	int fd = socket_f(domain, type, protocol);
 	if (fd == -1) {
 		printf("Failed to create a new socket\n");
 		return -1;
@@ -74,7 +71,7 @@ dyco_accept(int fd, struct sockaddr *addr, socklen_t *len)
 	{
 		_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
 
-		sockfd = accept(fd, addr, len);
+		sockfd = accept_f(fd, addr, len);
 		if (sockfd < 0)
 		{
 			if (errno == EAGAIN)
@@ -120,7 +117,7 @@ dyco_connect(int fd, struct sockaddr *name, socklen_t namelen)
 	{
 		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
 
-		ret = connect(fd, name, namelen);
+		ret = connect_f(fd, name, namelen);
 		if (ret == 0)
 			break;
 
@@ -146,7 +143,7 @@ dyco_recv(int fd, void *buf, size_t len, int flags)
 
 	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
-	int ret = recv(fd, buf, len, flags);
+	int ret = recv_f(fd, buf, len, flags);
 
 	return ret;
 }
@@ -159,7 +156,7 @@ dyco_recvfrom(int fd, void *buf, size_t len, int flags,
 
 	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
-	int ret = recvfrom(fd, buf, len, flags, src_addr, addrlen);
+	int ret = recvfrom_f(fd, buf, len, flags, src_addr, addrlen);
 	return ret;
 }
 
@@ -169,7 +166,7 @@ dyco_send(int fd, const void *buf, size_t len, int flags)
 	int timeout = TIMEOUT_INFINIT;
 	int sent = 0;
 
-	int ret = send(fd, ((char *)buf) + sent, len - sent, flags);
+	int ret = send_f(fd, ((char *)buf) + sent, len - sent, flags);
 	if (ret == 0)
 		return ret;
 	if (ret > 0)
@@ -179,7 +176,7 @@ dyco_send(int fd, const void *buf, size_t len, int flags)
 	{
 		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 		
-		ret = send(fd, ((char *)buf) + sent, len - sent, flags);
+		ret = send_f(fd, ((char *)buf) + sent, len - sent, flags);
 		if (ret <= 0)
 		{
 			if (errno == EAGAIN)
@@ -209,7 +206,7 @@ dyco_sendto(int fd, const void *buf, size_t len, int flags,
 	int timeout = TIMEOUT_INFINIT;
 	int sent = 0;
 
-	int ret = sendto(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
+	int ret = sendto_f(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
 	if (ret == 0)
 		return ret;
 	if (ret > 0)
@@ -219,7 +216,7 @@ dyco_sendto(int fd, const void *buf, size_t len, int flags,
 	{
 		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 
-		ret = sendto(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
+		ret = sendto_f(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
 		if (ret <= 0)
 		{
 			if (errno == EAGAIN)
@@ -250,40 +247,9 @@ dyco_close(int fd)
 
 #ifdef COROUTINE_HOOK
 
-socket_t socket_f = NULL;
-close_t close_f = NULL;
-accept_t accept_f = NULL;
-connect_t connect_f = NULL;
-recv_t recv_f = NULL;
-recvfrom_t recvfrom_f = NULL;
-send_t send_f = NULL;
-sendto_t sendto_f = NULL;
-
-int
-init_hook(void)
-{
-
-	socket_f = (socket_t)dlsym(RTLD_NEXT, "socket");
-	close_f = (close_t)dlsym(RTLD_NEXT, "close");
-
-	accept_f = (accept_t)dlsym(RTLD_NEXT, "accept");
-	connect_f = (connect_t)dlsym(RTLD_NEXT, "connect");
-	
-	recv_f = (recv_t)dlsym(RTLD_NEXT, "recv");
-	recvfrom_f = (recvfrom_t)dlsym(RTLD_NEXT, "recvfrom");
-	send_f = (send_t)dlsym(RTLD_NEXT, "send");
-	sendto_f = (sendto_t)dlsym(RTLD_NEXT, "sendto");
-
-	return 0;
-}
-
 int
 socket(int domain, int type, int protocol)
 {
-
-	if (!socket_f)
-		init_hook();
-
 	int fd = socket_f(domain, type, protocol);
 	if (fd == -1)
 	{
@@ -305,10 +271,6 @@ socket(int domain, int type, int protocol)
 int
 accept(int fd, struct sockaddr *addr, socklen_t *len)
 {
-
-	if (!accept_f)
-		init_hook();
-
 	int sockfd = -1;
 	int timeout = TIMEOUT_INFINIT;
 
@@ -355,11 +317,6 @@ accept(int fd, struct sockaddr *addr, socklen_t *len)
 int
 connect(int fd, const struct sockaddr *addr, socklen_t addrlen)
 {
-
-	if (!connect_f)
-		init_hook();
-
-	// printf("[%s:%s:%d]connect\n", __FILE__, __func__, __LINE__);
 	int ret = 0;
 	int timeout = TIMEOUT_DEFAULT;
 
@@ -367,7 +324,7 @@ connect(int fd, const struct sockaddr *addr, socklen_t addrlen)
 	{
 		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
 
-		ret = connect(fd, name, namelen);
+		ret = connect_f(fd, addr, addrlen);
 		if (ret == 0)
 			break;
 
@@ -389,15 +346,11 @@ connect(int fd, const struct sockaddr *addr, socklen_t addrlen)
 ssize_t
 recv(int fd, void *buf, size_t len, int flags)
 {
-
-	if (!recv_f)
-		init_hook();
-
 	int timeout = TIMEOUT_DEFAULT;
 
 	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
-	int ret = recv(fd, buf, len, flags);
+	int ret = recv_f(fd, buf, len, flags);
 
 	return ret;
 }
@@ -406,29 +359,21 @@ ssize_t
 recvfrom(int fd, void *buf, size_t len, int flags,
 		 struct sockaddr *src_addr, socklen_t *addrlen)
 {
-
-	if (!recvfrom_f)
-		init_hook();
-
 	int timeout = TIMEOUT_DEFAULT;
 
 	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
-	int ret = recvfrom(fd, buf, len, flags, src_addr, addrlen);
+	int ret = recvfrom_f(fd, buf, len, flags, src_addr, addrlen);
 	return ret;
 }
 
 ssize_t
 send(int fd, const void *buf, size_t len, int flags)
 {
-
-	if (!send_f)
-		init_hook();
-
 	int timeout = TIMEOUT_INFINIT;
 	int sent = 0;
 
-	int ret = send(fd, ((char *)buf) + sent, len - sent, flags);
+	int ret = send_f(fd, ((char *)buf) + sent, len - sent, flags);
 	if (ret == 0)
 		return ret;
 	if (ret > 0)
@@ -438,7 +383,7 @@ send(int fd, const void *buf, size_t len, int flags)
 	{
 		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 		
-		ret = send(fd, ((char *)buf) + sent, len - sent, flags);
+		ret = send_f(fd, ((char *)buf) + sent, len - sent, flags);
 		if (ret <= 0)
 		{
 			if (errno == EAGAIN)
@@ -462,14 +407,13 @@ send(int fd, const void *buf, size_t len, int flags)
 }
 
 ssize_t
-sendto(int sockfd, const void *buf, size_t len, int flags,
+sendto(int fd, const void *buf, size_t len, int flags,
 	       const struct sockaddr *dest_addr, socklen_t addrlen)
 {
-
 	int timeout = TIMEOUT_INFINIT;
 	int sent = 0;
 
-	int ret = sendto(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
+	int ret = sendto_f(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
 	if (ret == 0)
 		return ret;
 	if (ret > 0)
@@ -479,7 +423,7 @@ sendto(int sockfd, const void *buf, size_t len, int flags,
 	{
 		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 
-		ret = sendto(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
+		ret = sendto_f(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
 		if (ret <= 0)
 		{
 			if (errno == EAGAIN)
@@ -506,10 +450,6 @@ sendto(int sockfd, const void *buf, size_t len, int flags,
 int
 close(int fd)
 {
-
-	if (!close_f)
-		init_hook();
-
 	return close_f(fd);
 }
 

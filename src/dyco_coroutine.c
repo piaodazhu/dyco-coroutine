@@ -139,6 +139,7 @@ dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *arg) {
 	
 	co->status = BIT(COROUTINE_STATUS_NEW) | BIT(COROUTINE_STATUS_READY);
 	co->sched_count = 0;
+	co->sleep_usecs = 0;
 
 	co->id = sched->_id_gen++;
 	co->ownstack = 0;
@@ -158,9 +159,15 @@ dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *arg) {
 
 void 
 dyco_coroutine_free(dyco_coroutine *co) {
-	if (co == NULL) return;
-	--co->sched->coro_count;
+	if (co == NULL)
+		return;
 
+	--co->sched->coro_count;
+	if (TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
+		_schedule_cancel_wait(co, co->epollfd);
+		epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, co->epollfd, NULL);
+		close(co->epollfd);
+	}
 	if (co->stack) {
 		free(co->stack);
 		co->stack = NULL;
@@ -174,6 +181,3 @@ dyco_coroutine_free(dyco_coroutine *co) {
 	}
 	return;
 }
-
-
-

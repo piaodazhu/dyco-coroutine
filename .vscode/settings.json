@@ -9,6 +9,8 @@
 		"mman.h": "c",
 		"tcp.h": "c",
 		"limits": "c",
-		"timerfd.h": "c"
+		"timerfd.h": "c",
+		"typeinfo": "c",
+		"unistd.h": "c"
 	}
 }
