@@ -2,6 +2,7 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <sys/timerfd.h>
+#include <netdb.h>
 
 int inittimerfd(int start_s, int interval_s) {
 	int tfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
@@ -126,6 +127,7 @@ void cofunc0(void *arg)
 
 void cofunc1(void *arg)
 {
+
 	int id = *(int*)arg;
 	int tfd1 = inittimerfd(1, 1);
 	int tfd2 = inittimerfd(2, 1);
@@ -155,6 +157,10 @@ void cofunc1(void *arg)
 			++x;
 		}
 	}
+
+	char *dname = "www.baidu.com";
+	struct hostent *res = gethostbyname(dname);
+	printf("gethostname return %d\n", res->h_length);
 
 	dyco_epoll_del(tfd1, NULL);
 	dyco_epoll_del(tfd2, NULL);

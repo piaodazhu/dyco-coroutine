@@ -193,7 +193,7 @@ _htable_find(dyco_htable *htable, int id)
 static int
 _htable_resize(dyco_htable *htable, int width)
 {
-	if (width == htable->_width || width > DYCO_HTABLE_MAXWITDH)
+	if ((width == htable->_width) || (width > DYCO_HTABLE_MAXWITDH))
 		return -1;
 	int _newsize = (1 << width);
 	int _newmask = _newsize - 1;

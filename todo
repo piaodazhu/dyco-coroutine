@@ -9,7 +9,9 @@
 // hook抽出来: hook的设计，既可以直接用dyco_xxx，也可以通过开启宏定义，替换原本的调用
 // 独立栈，指定栈
 // waitchild
-waitgroup,channel
+waitgroup
+pubsub
+// channel
 fdlistener checker
 	使用封装api 返回之前 有监听已经有取消监听
 	使用epollfd规定只能一个 返回之前需要特殊处理

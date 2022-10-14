@@ -195,7 +195,14 @@ dyco_coroutine_free(dyco_coroutine *co) {
 
 void 
 dyco_coroutine_sleep(uint32_t msecs) {
-	dyco_coroutine *co = _get_sched()->curr_thread;
+	dyco_schedule *sched = _get_sched();
+	if (sched == NULL) {
+		return;
+	}
+	dyco_coroutine *co = sched->curr_thread;
+	if (co == NULL) {
+		return;
+	}
 	if (msecs == 0) {
 		SETBIT(co->status, COROUTINE_STATUS_READY);
 		TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
@@ -213,10 +220,10 @@ dyco_coroutine_setStack(int cid, void *stackptr, size_t stacksize)
 		return -1;
 	}
 	dyco_coroutine *co = _htable_find(&sched->cid_co_map, cid);
-	if (co == NULL || !TESTBIT(co->status, COROUTINE_STATUS_NEW)) {
+	if ((co == NULL) || (!TESTBIT(co->status, COROUTINE_STATUS_NEW))) {
 		return -1;
 	}
-	if (stackptr == NULL || stacksize == 0) {
+	if ((stackptr == NULL) || (stacksize == 0)) {
 		co->stack = NULL;
 		co->stack_size = 0;
 		CLRBIT(co->status, COROUTINE_FLAGS_OWNSTACK);
@@ -248,7 +255,7 @@ int
 dyco_coroutine_coroID()
 {
 	dyco_schedule *sched = _get_sched();
-	if (sched == NULL || sched->curr_thread == NULL) {
+	if ((sched == NULL) || (sched->curr_thread == NULL)) {
 		return -1;
 	}
 	return sched->curr_thread->cid;

@@ -25,6 +25,7 @@
 #include <sys/epoll.h>
 #include <sys/signalfd.h>
 #include <sys/wait.h>
+#include <sys/eventfd.h>
 #include <sys/socket.h>
 
 #include <errno.h>
@@ -38,6 +39,7 @@
 #define DYCO_MAX_EVENTS			256
 #define DYCO_MAX_STACKSIZE		(64 * 1024)
 #define DYCO_DEFAULT_TIMEOUT		3000000
+#define DYCO_DEFAULT_CHANNELSIZE	256
 
 // ------ 3. Macro Utils
 #define BIT(x)				(1 << (x))
@@ -55,6 +57,7 @@ typedef struct _dyco_coroutine_rbtree_sleep dyco_coroutine_rbtree_sleep;
 // typedef struct _dyco_coroutine_rbtree_wait dyco_coroutine_rbtree_wait;
 
 extern pthread_key_t global_sched_key;
+typedef struct _half_duplex_channel dyco_channel;
 typedef struct _dyco_schedule dyco_schedule;
 typedef struct _dyco_coroutine dyco_coroutine;
 
@@ -145,6 +148,23 @@ struct _dyco_coroutine
 	// RB_ENTRY(_dyco_coroutine) 	wait_node;
 };
 
+typedef enum {
+	HDC_STATUS_EMPTY,
+	HDC_STATUS_FULL,
+	HDC_STATUS_WANTREAD,
+	HDC_STATUS_WANTWRITE,
+	HDC_STATUS_WANTCLOSE,
+	HDC_STATUS_CANCLOSE
+} half_duplex_channel_status;
+
+struct _half_duplex_channel {
+	size_t maxsize;
+	size_t msglen;
+	void *msg;
+
+	int notifyfd;
+	half_duplex_channel_status status;
+};
 // ------ 5. Function Utils
 static inline dyco_schedule *_get_sched(void)
 {
@@ -227,6 +247,12 @@ int dyco_signal_waitchild(const pid_t __child, int *__status, int __timeout);
 int dyco_signal_init(const sigset_t *__mask);
 void dyco_signal_destroy();
 int dyco_signal_wait(struct signalfd_siginfo *__sinfo, int __timeout);
+
+// half duplex channel
+dyco_channel* dyco_channel_create(size_t __size);
+void dyco_channel_destroy(dyco_channel *__chan);
+ssize_t dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeout);
+ssize_t dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __timeout);
 
 // socket
 int dyco_socket(int domain, int type, int protocol);
