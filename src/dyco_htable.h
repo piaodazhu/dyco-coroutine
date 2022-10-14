@@ -29,9 +29,11 @@ struct _dyco_htable
 static dyco_htable* _htable_create(int width);
 static int _htable_init(dyco_htable *ht, int width);
 static void _htable_clear(dyco_htable *ht);
+static void _htable_clear_with_freecb(dyco_htable *ht, void (*freecb)(void*));
 static int _htable_insert(dyco_htable *htable, int id, void *data);
 static int _htable_delete(dyco_htable *htable, int id, void **data);
 static void* _htable_find(dyco_htable *htable, int id);
+static int _htable_contains(dyco_htable *htable, int id);
 static int _htable_resize(dyco_htable *htable, int width);
 static void _htable_free(dyco_htable *htable);
 
@@ -81,6 +83,34 @@ _htable_clear(dyco_htable *ht)
 		pre = ht->_table[i].next;
 		while (pre != NULL) {
 			ptr = pre->next;
+			free(pre);
+			pre = ptr;
+		}
+	}
+	free(ht->_table);
+	ht->_count = 0;
+	ht->_mask = 0;
+	ht->_width = 0;
+	return;
+}
+
+static void
+_htable_clear_with_freecb(dyco_htable *ht, void (*freecb)(void*))
+{
+	if (ht->_table == NULL) 
+		return;
+
+	int i;
+	dyco_hentry *pre, *ptr;
+	for (i = 0; i <= ht->_mask; i++) {
+		if (ht->_table[i].id == -1) {
+			continue;
+		}
+		freecb(ht->_table[i].data);
+		pre = ht->_table[i].next;
+		while (pre != NULL) {
+			ptr = pre->next;
+			free(pre->data);
 			free(pre);
 			pre = ptr;
 		}
@@ -170,6 +200,46 @@ _htable_delete(dyco_htable *htable, int id, void **data)
 	return -1;
 }
 
+static int
+_htable_delete_with_freecb(dyco_htable *htable, int id, void (*freecb)(void*))
+{
+	int idx = id & htable->_mask;
+	dyco_hentry *bucket = &htable->_table[idx];
+	if (bucket->id == -1) {
+		return -1;
+	}
+	dyco_hentry *ptr = bucket->next;
+	if (bucket->id == id) {
+		if (bucket->data != NULL)
+			freecb(bucket->data);
+		if (ptr != NULL) {
+			bucket->id = ptr->id;
+			bucket->data = ptr->data;
+			bucket->next = ptr->next;
+			free(ptr);
+		} else {
+			bucket->id = -1;
+			bucket->data = NULL;
+		}
+		--htable->_count;
+		return 0;
+	}
+	dyco_hentry *pre = bucket;
+	while (ptr != NULL) {
+		if (ptr->id == id) {
+			pre->next = ptr->next;
+			if (ptr->data != NULL)
+				freecb(ptr->data);
+			free(ptr);
+			--htable->_count;
+			return 0;
+		}
+		pre = ptr;
+		ptr = ptr->next;
+	}
+	return -1;
+}
+
 static void*
 _htable_find(dyco_htable *htable, int id)
 {
@@ -188,6 +258,26 @@ _htable_find(dyco_htable *htable, int id)
 		ptr = ptr->next;
 	}
 	return NULL;
+}
+
+static int
+_htable_contains(dyco_htable *htable, int id)
+{
+	int idx = id & htable->_mask;
+	dyco_hentry *bucket = &htable->_table[idx];
+	if (bucket->id == -1)
+		return 0;
+	if (bucket->id == id)
+		return 1;
+
+	dyco_hentry *ptr = bucket->next;
+	while (ptr != NULL) {
+		if (ptr->id == id) {
+			return 1;
+		}
+		ptr = ptr->next;
+	}
+	return 0;
 }
 
 static int

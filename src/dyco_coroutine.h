@@ -57,7 +57,7 @@ typedef struct _dyco_coroutine_rbtree_sleep dyco_coroutine_rbtree_sleep;
 // typedef struct _dyco_coroutine_rbtree_wait dyco_coroutine_rbtree_wait;
 
 extern pthread_key_t global_sched_key;
-typedef struct _half_duplex_channel dyco_channel;
+
 typedef struct _dyco_schedule dyco_schedule;
 typedef struct _dyco_coroutine dyco_coroutine;
 
@@ -148,6 +148,8 @@ struct _dyco_coroutine
 	// RB_ENTRY(_dyco_coroutine) 	wait_node;
 };
 
+typedef struct _half_duplex_channel dyco_channel;
+
 typedef enum {
 	HDC_STATUS_EMPTY,
 	HDC_STATUS_FULL,
@@ -165,6 +167,23 @@ struct _half_duplex_channel {
 	int notifyfd;
 	half_duplex_channel_status status;
 };
+
+
+typedef struct _waitgroup_sublist dyco_wgsublist;
+typedef struct _waitgroup dyco_waitgroup;
+struct _waitgroup_sublist {
+	int	notifyfd;
+	dyco_wgsublist	*next;
+};
+
+struct _waitgroup {
+	int	tot_size;
+	int	finished;
+	dyco_htable	cid_set;
+	dyco_htable	target_sublist_map;
+	dyco_wgsublist	*final_sublist;
+};
+
 // ------ 5. Function Utils
 static inline dyco_schedule *_get_sched(void)
 {
@@ -242,7 +261,7 @@ int dyco_epoll_add(int __fd, struct epoll_event *__ev);
 int dyco_epoll_del(int __fd, struct epoll_event *__ev);
 int dyco_epoll_wait(struct epoll_event *__events, int __maxevents, int __timeout);
 
-// child signal
+// signal
 int dyco_signal_waitchild(const pid_t __child, int *__status, int __timeout);
 int dyco_signal_init(const sigset_t *__mask);
 void dyco_signal_destroy();
@@ -250,9 +269,16 @@ int dyco_signal_wait(struct signalfd_siginfo *__sinfo, int __timeout);
 
 // half duplex channel
 dyco_channel* dyco_channel_create(size_t __size);
-void dyco_channel_destroy(dyco_channel *__chan);
+void dyco_channel_destroy(dyco_channel **__chan);
 ssize_t dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeout);
 ssize_t dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __timeout);
+
+// wait group
+dyco_waitgroup* dyco_waitgroup_create(int __suggest_size);
+void dyco_waitgroup_destroy(dyco_waitgroup** __group);
+int dyco_waitgroup_add(dyco_waitgroup* __group, int __cid);
+int dyco_waitgroup_done(dyco_waitgroup* __group);
+int dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout);
 
 // socket
 int dyco_socket(int domain, int type, int protocol);
