@@ -1,3 +1,6 @@
+#ifndef _DYCO_EPOLL_H
+#define _DYCO_EPOLL_H
+
 #include "dyco_coroutine.h"
 
 int
@@ -13,6 +16,7 @@ dyco_epoll_init()
 		perror("ERROR: dyco_epoll_* can only be called inside coroutine functions!");
 		return -1;
 	}
+	
 	if (TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
 		perror("ERROR: dyco_epoll_init can only be called once in one coroutine function! You can use normal epollfd and add it by dyco_epoll_ctl");
 		return -1;
@@ -24,8 +28,8 @@ dyco_epoll_init()
 	ev.data.fd = co->epollfd;
 	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
 	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, ev.data.fd, &ev);
-	_schedule_sched_wait(co, ev.data.fd, ev.events);
-
+	_schedule_sched_wait(co, ev.data.fd);
+	// printf("dyco_epoll_init cid = %d, status = %d\n", co->cid, co->status);
 	return co->epollfd;
 } 
 
@@ -42,8 +46,10 @@ dyco_epoll_wait(struct epoll_event *__events, int __maxevents, int __timeout)
 		perror("ERROR: dyco_epoll_* can only be called inside coroutine functions!");
 		return -1;
 	}
+	// printf("+++ dyco_epoll_wait cid = %d, status = %d\n", co->cid, co->status);
 	if (!TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
-		perror("ERROR: dyco_epoll_init haven't been called!");
+		perror("ERROR: 4dyco_epoll_init haven't been called!");
+		abort();
 		return -1;
 	}
 
@@ -75,7 +81,7 @@ dyco_epoll_add(int __fd, struct epoll_event *__ev)
 		return -1;
 	}
 	if (!TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
-		perror("ERROR: dyco_epoll_init haven't been called!");
+		perror("ERROR: 3dyco_epoll_init haven't been called!");
 		return -1;
 	}
 	if (epoll_ctl(co->epollfd, EPOLL_CTL_ADD, __fd, __ev) < 0) {
@@ -99,7 +105,7 @@ dyco_epoll_del(int __fd, struct epoll_event *__ev)
 		return -1;
 	}
 	if (!TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
-		perror("ERROR: dyco_epoll_init haven't been called!");
+		perror("ERROR: 2dyco_epoll_init haven't been called!");
 		return -1;
 	}
 	if (epoll_ctl(co->epollfd, EPOLL_CTL_DEL, __fd, __ev) < 0) {
@@ -123,19 +129,15 @@ dyco_epoll_destroy()
 		return;
 	}
 	if (!TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
-		perror("ERROR: dyco_epoll_init haven't been called!");
+		perror("ERROR: 1dyco_epoll_init haven't been called!");
 		return;
 	}
+
 	_schedule_cancel_wait(co, co->epollfd);
-
-	struct epoll_event ev;
-	ev.data.fd = co->epollfd;
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, ev.data.fd, &ev);
-
+	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, co->epollfd, NULL);
 	CLRBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING);
 	close(co->epollfd);
-
+	
 	return;
 }
 
@@ -156,12 +158,12 @@ epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 	if (co == NULL) {
 		return -1;
 	}
-
+	// printf("++ epoll_wait cid = %d, status = %d\n", co->cid, co->status);
 	struct epoll_event ev;
 	ev.data.fd = epfd;
 	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
 	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, epfd, &ev);
-	_schedule_sched_wait(co, epfd, ev.events);
+	_schedule_sched_wait(co, epfd);
 	_schedule_sched_sleep(co, timeout);
 
 	_yield(co);
@@ -169,8 +171,10 @@ epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, epfd);
 	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, epfd, NULL);
-
+// printf("-- epoll_wait cid = %d, status = %d\n", co->cid, co->status);
 	return epoll_wait_f(epfd, events, maxevents, 0);
 }
+
+#endif
 
 #endif

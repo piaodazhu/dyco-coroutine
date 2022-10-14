@@ -664,7 +664,7 @@ void benchcore(const char *host,const int port,const char *req)
 
 	for (i = 0;i < sockets / clients;i ++) {
 		
-		dyco_coroutine_create(&co, httprequest_commit, &shost);
+		dyco_coroutine_create(httprequest_commit, &shost);
 	}
 	dyco_schedule_run();
 

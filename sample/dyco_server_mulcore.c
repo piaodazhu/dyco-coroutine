@@ -214,7 +214,7 @@ void server(void *arg) {
 		printf("new client comming\n");
 		
 		dyco_coroutine *read_co;
-		dyco_coroutine_create(&read_co, server_reader, &cli_fd);
+		dyco_coroutine_create(server_reader, &cli_fd);
 
 		int value = add_shmvalue();
 		if (value % 1000 == 999) {
@@ -242,7 +242,7 @@ int mulcore_entry(int begin_port) {
 	//for (i = 0;i < 10;i ++) {
 	unsigned short *port = calloc(1, sizeof(unsigned short));
 	*port = base_port + i;
-	dyco_coroutine_create(&co, server, port); ////////no run
+	dyco_coroutine_create(server, port); ////////no run
 	//}
 
 	dyco_schedule_run(); //run

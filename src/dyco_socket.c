@@ -31,7 +31,7 @@ _wait_events(int fd, unsigned int events, int timeout)
 	ev.data.fd = fd;
 	ev.events = events;
 	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fd, &ev);
-	_schedule_sched_wait(co, fd, events);
+	_schedule_sched_wait(co, fd);
 	_schedule_sched_sleep(co, timeout);
 
 	_yield(co);

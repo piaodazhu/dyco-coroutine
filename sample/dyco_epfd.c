@@ -15,10 +15,10 @@ int inittimerfd(int start_s, int interval_s) {
 	return tfd;
 }
 
-void cofunc1(void *arg)
+void cofunc0(void *arg)
 {
 	int id = *(int*)arg;
-	int tfd1 = inittimerfd(5, 1);
+	int tfd1 = inittimerfd(2, 1);
 	int tfd2 = inittimerfd(6, 1);
 	int tfd3 = inittimerfd(7, 2);
 	
@@ -41,7 +41,7 @@ void cofunc1(void *arg)
 		uint64_t cnt;
 		for (i = 0; i < nevents; i++) {
 			ret = read(events[i].data.fd, &cnt, sizeof(cnt));
-			printf("[%ld] cofunc1: fd %d, read counter val %lu\n", time(NULL), events[i].data.fd, cnt);
+			printf("[%ld] cofunc0: fd %d, read counter val %lu\n", time(NULL), events[i].data.fd, cnt);
 			++x;
 		}
 	}
@@ -52,7 +52,7 @@ void cofunc1(void *arg)
 	return;
 }
 
-// void cofunc2(void *arg)
+// void cofunc1(void *arg)
 // {
 // 	int id = *(int*)arg;
 // 	int tfd1 = inittimerfd(1, 1);
@@ -78,7 +78,7 @@ void cofunc1(void *arg)
 // 		uint64_t cnt;
 // 		for (i = 0; i < nevents; i++) {
 // 			ret = read(events[i].data.fd, &cnt, sizeof(cnt));
-// 			printf("[%ld] cofunc2: fd %d, read counter val %lu\n", time(NULL), events[i].data.fd, cnt);
+// 			printf("[%ld] cofunc1: fd %d, read counter val %lu\n", time(NULL), events[i].data.fd, cnt);
 // 			++x;
 // 		}
 // 	}
@@ -89,7 +89,7 @@ void cofunc1(void *arg)
 // 	return;
 // }
 
-// void cofunc1(void *arg)
+// void cofunc0(void *arg)
 // {
 // 	int id = *(int*)arg;
 // 	int tfd1 = inittimerfd(5, 1);
@@ -115,7 +115,7 @@ void cofunc1(void *arg)
 // 		uint64_t cnt;
 // 		for (i = 0; i < nevents; i++) {
 // 			ret = read(events[i].data.fd, &cnt, sizeof(cnt));
-// 			printf("[%ld] cofunc1: fd %d, read counter val %lu\n", time(NULL), events[i].data.fd, cnt);
+// 			printf("[%ld] cofunc0: fd %d, read counter val %lu\n", time(NULL), events[i].data.fd, cnt);
 // 			++x;
 // 		}
 // 	}
@@ -124,7 +124,7 @@ void cofunc1(void *arg)
 // 	return;
 // }
 
-void cofunc2(void *arg)
+void cofunc1(void *arg)
 {
 	int id = *(int*)arg;
 	int tfd1 = inittimerfd(1, 1);
@@ -169,8 +169,8 @@ int main()
 	// init_hook();
 	dyco_coroutine *co1, *co2;
 	int id1 = 1, id2 = 2;
-	dyco_coroutine_create(&co1, cofunc1, &id1);
-	dyco_coroutine_create(&co2, cofunc2, &id2);
+	dyco_coroutine_create(cofunc0, &id1);
+	dyco_coroutine_create(cofunc1, &id2);
 	dyco_schedule_run();
 	return 0;
 }

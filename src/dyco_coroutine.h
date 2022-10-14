@@ -14,40 +14,45 @@
 #include <inttypes.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
 #include <fcntl.h>
 #include <sys/time.h>
 #include <netinet/tcp.h>
 
 #include <ucontext.h>
 
-#include <sys/epoll.h>
 #include <sys/poll.h>
+#include <sys/epoll.h>
+#include <sys/signalfd.h>
+#include <sys/wait.h>
 #include <sys/socket.h>
 
 #include <errno.h>
 
 #include "sys_queue.h"
 #include "sys_tree.h"
+#include "dyco_htable.h"
 
 // ------ 2. User Configurations
 #define COROUTINE_HOOK
-#define DYCO_MAX_EVENTS		(1024 * 1024)
-#define DYCO_MAX_STACKSIZE		(128 * 1024) // {http: 16*1024, tcp: 4*1024}
+#define DYCO_MAX_EVENTS			256
+#define DYCO_MAX_STACKSIZE		(64 * 1024)
+#define DYCO_DEFAULT_TIMEOUT		3000000
 
 // ------ 3. Macro Utils
 #define BIT(x)				(1 << (x))
 #define SETBIT(d, x)			do {(d) |= BIT(x);} while(0)
 #define CLRBIT(d, x)			do {(d) &= (~BIT(x));} while(0)
-#define TESTBIT(d, x)			((d) & BIT(x))
+#define TESTBIT(d, x)			(((d) & BIT(x)) != 0)
 
 // ------ 4. Data Structure Defination
 TAILQ_HEAD(_dyco_coroutine_queue, _dyco_coroutine);
 RB_HEAD(_dyco_coroutine_rbtree_sleep, _dyco_coroutine);
-RB_HEAD(_dyco_coroutine_rbtree_wait, _dyco_coroutine);
+// RB_HEAD(_dyco_coroutine_rbtree_wait, _dyco_coroutine);
 
 typedef struct _dyco_coroutine_queue dyco_coroutine_queue;
 typedef struct _dyco_coroutine_rbtree_sleep dyco_coroutine_rbtree_sleep;
-typedef struct _dyco_coroutine_rbtree_wait dyco_coroutine_rbtree_wait;
+// typedef struct _dyco_coroutine_rbtree_wait dyco_coroutine_rbtree_wait;
 
 extern pthread_key_t global_sched_key;
 typedef struct _dyco_schedule dyco_schedule;
@@ -62,9 +67,11 @@ typedef enum
 	COROUTINE_STATUS_RUNNING,
 	COROUTINE_STATUS_SLEEPING,
 
+	COROUTINE_FLAGS_OWNSTACK,
 	COROUTINE_FLAGS_WAITING,
 	COROUTINE_FLAGS_EXPIRED,
-	COROUTINE_FLAGS_IOMULTIPLEXING
+	COROUTINE_FLAGS_IOMULTIPLEXING,
+	COROUTINE_FLAGS_WAITSIGNAL
 } dyco_coroutine_status;
 
 struct _dyco_schedule
@@ -81,20 +88,23 @@ struct _dyco_schedule
 	size_t			stack_size;
 
 	// static info
-	uint64_t		default_timeout;
+	int			sched_id;
+	uint64_t		loopwait_timeout;
 	uint64_t		birth;
 
 	// dynamic info
-	int			coro_count;
-	unsigned int		_id_gen;
-	int 			num_new_events;
+	unsigned int		coro_count;
+	unsigned int		_cid_gen;
+	unsigned int 		num_new_events;
 	dyco_coroutine 		*curr_thread;
 
 	// coroutine containers
 	dyco_coroutine_queue 		ready;
 	dyco_coroutine_rbtree_sleep 	sleeping;
-	dyco_coroutine_rbtree_wait 	waiting;
+	// dyco_coroutine_rbtree_wait 	waiting;
 
+	dyco_htable		fd_co_map;
+	dyco_htable		cid_co_map;
 };
 
 struct _dyco_coroutine
@@ -112,27 +122,27 @@ struct _dyco_coroutine
 	size_t 			stack_size;
 
 	// dynamic info
-	dyco_coroutine_status 	status;
+	uint32_t 		status;
 	uint32_t 		sched_count;
 	uint64_t 		sleep_usecs;
 
 	// static info
 	// ownstack: set 1 to use co->stack when running, set 0 to use sched-stack.
-	unsigned int 		id;
-	unsigned int		ownstack; 
+	int 			cid;
+	// int			ownstack; 
 
 	// user customized data
 	void 			*data;
 
 	// events
-	unsigned int 		events; 	// for single event
 	int 			fd;		// for single event
 	int			epollfd;	// for IO multiplexing 
+	int			sigfd;		// for wait signals
 	
 	// container node
 	TAILQ_ENTRY(_dyco_coroutine) 	ready_next;
 	RB_ENTRY(_dyco_coroutine) 	sleep_node;
-	RB_ENTRY(_dyco_coroutine) 	wait_node;
+	// RB_ENTRY(_dyco_coroutine) 	wait_node;
 };
 
 // ------ 5. Function Utils
@@ -175,29 +185,49 @@ static inline int _coroutine_wait_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
 
 // ------ 6. Inner Primes
 // coroutine
+static void _init_coro(dyco_coroutine *co);
 int _resume(dyco_coroutine *co);
 void _yield(dyco_coroutine *co);
+
 // scheduler
 void _schedule_sched_sleep(dyco_coroutine *co, int msecs);
 void _schedule_cancel_sleep(dyco_coroutine *co);
-void _schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events);
+void _schedule_sched_wait(dyco_coroutine *co, int fd);
 dyco_coroutine *_schedule_cancel_wait(dyco_coroutine *co, int fd);
 
 
 // ------ 7. User APIs
 // coroutine
-static void dyco_coroutine_init(dyco_coroutine *co);
-int dyco_coroutine_create(dyco_coroutine **new_co, proc_coroutine func, void *arg);
+int dyco_coroutine_create(proc_coroutine func, void *arg);
 void dyco_coroutine_free(dyco_coroutine *co);
 void dyco_coroutine_sleep(uint32_t msecs);
+
+int dyco_coroutine_coroID();
+int dyco_coroutine_schedID();
+int dyco_coroutine_setStack(int cid, void *stackptr, size_t stacksize);
+int dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize);
+int dyco_coroutine_setUdata(int cid, void *udata);
+int dyco_coroutine_getUdata(int cid, void **udata);
+int dyco_coroutine_getSchedCount(int cid);
+
 // scheduler
 void dyco_schedule_run(void);
+int  dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout);
+void  dyco_schedule_free(dyco_schedule *sched);
+
 // epoll
 int dyco_epoll_init();
 void dyco_epoll_destroy();
 int dyco_epoll_add(int __fd, struct epoll_event *__ev);
 int dyco_epoll_del(int __fd, struct epoll_event *__ev);
 int dyco_epoll_wait(struct epoll_event *__events, int __maxevents, int __timeout);
+
+// child signal
+int dyco_signal_waitchild(const pid_t __child, int *__status, int __timeout);
+int dyco_signal_init(const sigset_t *__mask);
+void dyco_signal_destroy();
+int dyco_signal_wait(struct signalfd_siginfo *__sinfo, int __timeout);
+
 // socket
 int dyco_socket(int domain, int type, int protocol);
 int dyco_close(int fd);

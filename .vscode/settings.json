@@ -11,6 +11,7 @@
 		"limits": "c",
 		"timerfd.h": "c",
 		"typeinfo": "c",
-		"unistd.h": "c"
+		"unistd.h": "c",
+		"socket.h": "c"
 	}
 }

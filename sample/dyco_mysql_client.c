@@ -37,7 +37,7 @@ int main() {
 	init_hook();
 
 	dyco_coroutine *co = NULL;
-	dyco_coroutine_create(&co, func, NULL);
+	dyco_coroutine_create(func, NULL);
 	dyco_schedule_run(); //run
 #else
 

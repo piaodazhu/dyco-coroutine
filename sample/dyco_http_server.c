@@ -599,7 +599,7 @@ void server(void *arg)
 			client_name.sin_port, *client_sock);
 
 		dyco_coroutine *read_co;
-		dyco_coroutine_create(&read_co, accept_request, client_sock);
+		dyco_coroutine_create(accept_request, client_sock);
 
 #else
     	pthread_t newthread;
@@ -617,7 +617,7 @@ void server(void *arg)
 int main(int argc, char *argv[]) {
 	
 	dyco_coroutine *co = NULL;
-	dyco_coroutine_create(&co, server, 0); ////////no run
+	dyco_coroutine_create( server, 0); ////////no run
 	
 
 	dyco_schedule_run(); //run

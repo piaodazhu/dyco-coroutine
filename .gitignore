@@ -52,5 +52,7 @@ Mkfile.old
 dkms.conf
 
 tmp/**
+.vscode/**
+todo
 .vscode/settings.json
-.gitignore
+contextswitch.txt

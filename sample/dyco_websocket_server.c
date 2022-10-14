@@ -359,7 +359,7 @@ void server(void *arg) {
 		dySetNonblock(cli_fd);
 
 		dyco_coroutine *read_co = NULL;
-		dyco_coroutine_create(&read_co, server_reader, &cli_fd);
+		dyco_coroutine_create(server_reader, &cli_fd);
 
 	}
 	
@@ -368,7 +368,7 @@ void server(void *arg) {
 int main() {
 
 	dyco_coroutine *co = NULL;
-	dyco_coroutine_create(&co, server, NULL); 
+	dyco_coroutine_create(server, NULL); 
 
 	dyco_schedule_run();
 }

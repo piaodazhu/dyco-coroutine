@@ -741,7 +741,7 @@ void server(void *arg) {
 			client_name.sin_port, *client_sock);
 #endif
 		dyco_coroutine *read_co;
-		dyco_coroutine_create(&read_co, accept_request, client_sock);
+		dyco_coroutine_create(accept_request, client_sock);
 	}
 
 }
@@ -755,7 +755,7 @@ int mulcore_entry(int begin_port) {
 	
 	unsigned short *port = calloc(1, sizeof(unsigned short));
 	*port = base_port + i;
-	dyco_coroutine_create(&co, server, port); ////////no run
+	dyco_coroutine_create(server, port); ////////no run
 	
 
 	dyco_schedule_run(); //run

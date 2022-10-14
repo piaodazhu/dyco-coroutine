@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
 	//init_hook();
 
 	dyco_coroutine *co = NULL;
-	dyco_coroutine_create(&co, coroutine_func, NULL);
+	dyco_coroutine_create(coroutine_func, NULL);
 	dyco_schedule_run(); //run
 
 

@@ -107,7 +107,7 @@ void client(void *arg) {
 int main(int argc, char *argv[]) {
 	dyco_coroutine *co = NULL;
 
-	dyco_coroutine_create(&co, client, NULL);
+	dyco_coroutine_create(client, NULL);
 	
 	dyco_schedule_run(); //run
 

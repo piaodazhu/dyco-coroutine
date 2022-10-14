@@ -443,7 +443,7 @@ void server(void *arg) {
 		dyco_coroutine *read_co;
 		int *client_sock = (int *)malloc(sizeof(int));
 		*client_sock = clientfd;
-		dyco_coroutine_create(&read_co, accept_request, client_sock);
+		dyco_coroutine_create(accept_request, client_sock);
 
 		print_countfds();
 	}
@@ -465,7 +465,7 @@ int process_bind(int fd) {
 	sched_setaffinity(0, sizeof(mask), &mask);
 
 	dyco_coroutine *co = NULL;
-	dyco_coroutine_create(&co, server, &fd);
+	dyco_coroutine_create(server, &fd);
 
 	dyco_schedule_run();
 }
