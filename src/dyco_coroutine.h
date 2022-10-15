@@ -101,6 +101,9 @@ struct _dyco_schedule
 	unsigned int 		num_new_events;
 	dyco_coroutine 		*curr_thread;
 
+	// user customized data
+	void 			*udata;
+
 	// coroutine containers
 	dyco_coroutine_queue 		ready;
 	dyco_coroutine_rbtree_sleep 	sleeping;
@@ -135,7 +138,7 @@ struct _dyco_coroutine
 	// int			ownstack; 
 
 	// user customized data
-	void 			*data;
+	void 			*udata;
 
 	// events
 	int 			fd;		// for single event
@@ -265,7 +268,6 @@ void dyco_coroutine_free(dyco_coroutine *co);
 void dyco_coroutine_sleep(uint32_t msecs);
 
 int dyco_coroutine_coroID();
-int dyco_coroutine_schedID();
 int dyco_coroutine_setStack(int cid, void *stackptr, size_t stacksize);
 int dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize);
 int dyco_coroutine_setUdata(int cid, void *udata);
@@ -273,9 +275,14 @@ int dyco_coroutine_getUdata(int cid, void **udata);
 int dyco_coroutine_getSchedCount(int cid);
 
 // scheduler
-void dyco_schedule_run(void);
+void dyco_schedule_run();
 int  dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout);
 void  dyco_schedule_free(dyco_schedule *sched);
+
+int dyco_schedule_schedID();
+int dyco_schedule_setUdata(void *udata);
+int dyco_schedule_getUdata(void **udata);
+int dyco_schedule_getCoroCount();
 
 // epoll
 int dyco_epoll_init();
@@ -301,6 +308,7 @@ dyco_pubsubchannel* dyco_pubsub_create(size_t __size);
 void dyco_pubsub_destroy(dyco_pubsubchannel **__pschan);
 ssize_t dyco_pubsub_publish(dyco_pubsubchannel *__pschan, void *__buf, size_t __size);
 ssize_t dyco_pubsub_subscribe(dyco_pubsubchannel *__pschan, void *__buf, size_t __maxsize, int __timeout);
+
 // wait group
 dyco_waitgroup* dyco_waitgroup_create(int __suggest_size);
 void dyco_waitgroup_destroy(dyco_waitgroup **__group);

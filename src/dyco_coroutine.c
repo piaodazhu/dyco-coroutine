@@ -150,7 +150,7 @@ dyco_coroutine_create(proc_coroutine func, void *arg) {
 	co->cid = sched->_cid_gen++;
 	assert(_htable_insert(&sched->cid_co_map, co->cid, co) >= 0);
 
-	co->data = NULL;
+	co->udata = NULL;
 
 	co->fd = -1;
 	co->epollfd = -1;
@@ -182,10 +182,6 @@ dyco_coroutine_free(dyco_coroutine *co) {
 	if (co->stack) {
 		free(co->stack);
 		co->stack = NULL;
-	}
-	if (co->data) {
-		free(co->data);
-		co->data = NULL;
 	}
 	if (co) {
 		free(co);
@@ -262,16 +258,6 @@ dyco_coroutine_coroID()
 }
 
 int
-dyco_coroutine_schedID()
-{
-	dyco_schedule *sched = _get_sched();
-	if (sched == NULL) {
-		return -1;
-	}
-	return sched->sched_id;
-}
-
-int
 dyco_coroutine_setUdata(int cid, void *udata)
 {
 	dyco_schedule *sched = _get_sched();
@@ -282,7 +268,7 @@ dyco_coroutine_setUdata(int cid, void *udata)
 	if (co == NULL) {
 		return -1;
 	}
-	co->data = udata;
+	co->udata = udata;
 	return 0;
 }
 
@@ -297,7 +283,7 @@ dyco_coroutine_getUdata(int cid, void **udata)
 	if (co == NULL) {
 		return -1;
 	}
-	*udata = co->data;
+	*udata = co->udata;
 	return 0;
 }
 

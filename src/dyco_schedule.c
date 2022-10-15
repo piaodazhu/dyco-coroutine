@@ -133,6 +133,8 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 	
 	sched->num_new_events = 0;
 	sched->curr_thread = NULL;
+
+	sched->udata = NULL;
 	
 	TAILQ_INIT(&sched->ready);
 	RB_INIT(&sched->sleeping);
@@ -222,7 +224,7 @@ _schedule_sched_wait(dyco_coroutine *co, int fd)
 }
 
 void
-dyco_schedule_run(void)
+dyco_schedule_run()
 {
 
 	dyco_schedule *sched = _get_sched();
@@ -263,4 +265,48 @@ dyco_schedule_run(void)
 		}
 	}
 	return;
+}
+
+int
+dyco_schedule_schedID()
+{
+	dyco_schedule *sched = _get_sched();
+	if (sched == NULL) {
+		return -1;
+	}
+	return sched->sched_id;
+}
+
+int
+dyco_schedule_setUdata(void *udata)
+{
+	dyco_schedule *sched = _get_sched();
+	if (sched == NULL) {
+		return -1;
+	}
+	sched->udata = udata;
+	return 0;
+}
+
+
+int
+dyco_schedule_getUdata(void **udata)
+{
+	dyco_schedule *sched = _get_sched();
+	if (sched == NULL) {
+		return -1;
+	}
+	*udata = sched->udata;
+	return 0;
+}
+
+
+int
+dyco_schedule_getCoroCount()
+{
+	dyco_schedule *sched = _get_sched();
+	if (sched == NULL) {
+		return -1;
+	}
+	return sched->coro_count;
 }
