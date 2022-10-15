@@ -1,11 +1,6 @@
 #include "dyco_coroutine.h"
 
 RB_GENERATE(_dyco_coroutine_rbtree_sleep, _dyco_coroutine, sleep_node, _coroutine_sleep_cmp);
-// RB_GENERATE(_dyco_coroutine_rbtree_wait, _dyco_coroutine, wait_node, _coroutine_wait_cmp);
-
-// #define SCHEDULE_ISDONE(sched)		(RB_EMPTY(&sched->waiting) && \
-// 				 	RB_EMPTY(&sched->sleeping) && \
-// 				 	TAILQ_EMPTY(&sched->ready))
 
 #define SCHEDULE_ISDONE(sched)		(HTABLE_EMPTY(&sched->fd_co_map) && \
 				 	RB_EMPTY(&sched->sleeping) && \
@@ -74,11 +69,6 @@ _schedule_get_waitco(dyco_schedule *sched, int fd)
 {
 
 	return (dyco_coroutine*)_htable_find(&sched->fd_co_map, fd);
-
-	// dyco_coroutine find_it = {0};
-	// find_it.fd = fd;
-	// dyco_coroutine *co = RB_FIND(_dyco_coroutine_rbtree_wait, &sched->waiting, &find_it);
-	// return co;
 }
 
 void 
@@ -196,14 +186,6 @@ _schedule_cancel_wait(dyco_coroutine *co, int fd)
 	CLRBIT(co->status, COROUTINE_FLAGS_WAITING);
 	assert(c != NULL);
 	return c;
-
-	// int tmpfd = co->fd;
-	// co->fd = fd;
-	// RB_REMOVE(_dyco_coroutine_rbtree_wait, &co->sched->waiting, co);
-	// CLRBIT(co->status, COROUTINE_FLAGS_WAITING);
-	// co->fd = tmpfd;
-
-	// return co;
 }
 
 void
@@ -213,14 +195,6 @@ _schedule_sched_wait(dyco_coroutine *co, int fd)
 	assert(_htable_insert(&co->sched->fd_co_map, fd, co) >= 0);
 	SETBIT(co->status, COROUTINE_FLAGS_WAITING);
 	return;
-
-	// co->fd = fd;
-
-	// dyco_coroutine *co_tmp = RB_INSERT(_dyco_coroutine_rbtree_wait, &co->sched->waiting, co);
-	// SETBIT(co->status, COROUTINE_FLAGS_WAITING);
-	// assert(co_tmp == NULL);
-
-	// return;
 }
 
 void

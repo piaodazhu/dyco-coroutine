@@ -2,7 +2,6 @@
 
 pthread_key_t global_sched_key;
 static pthread_once_t sched_key_once = PTHREAD_ONCE_INIT;
-// extern int dyco_schedule_create(int stack_size, uint64_t loopwait_timeout);
 
 static void 
 _sched_key_destructor(void *data) {
@@ -46,7 +45,7 @@ static void
 _save_stack(dyco_coroutine *co) {
 	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK))
 		return;
-	// printf("co %d save stack\n", co->cid);
+
 	char* top = co->sched->stack + co->sched->stack_size;
 	char dummy = 0;
 	assert(top - &dummy <= DYCO_MAX_STACKSIZE);
@@ -63,7 +62,7 @@ static void
 _load_stack(dyco_coroutine *co) {
 	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK))
 		return;
-	// printf("co %d load stack\n", co->cid);
+	
 	memcpy(co->sched->stack + co->sched->stack_size - co->stack_size, co->stack, co->stack_size);
 	return;
 }
@@ -73,11 +72,9 @@ _yield(dyco_coroutine *co) {
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED) == 0) {
 		_save_stack(co);
 	}
-	// printf("co %d epoll sleep\n", co->cid);
 	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
 	swapcontext(&co->ctx, &co->sched->ctx);
 	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
-	// printf("co %d epoll wake\n", co->cid);
 }
 
 int 
@@ -142,19 +139,15 @@ dyco_coroutine_create(proc_coroutine func, void *arg) {
 	co->sched_count = 0;
 	co->sleep_usecs = 0;
 
-	// co->stack = malloc(65535);
-	// co->stack_size = 65535;
-	// SETBIT(co->status, COROUTINE_FLAGS_OWNSTACK);
-
 	if (sched->_cid_gen == INT_MAX) sched->_cid_gen = 0;
 	co->cid = sched->_cid_gen++;
 	assert(_htable_insert(&sched->cid_co_map, co->cid, co) >= 0);
 
 	co->udata = NULL;
 
-	co->fd = -1;
 	co->epollfd = -1;
-	
+	co->sigfd = -1;
+
 	++sched->coro_count;
 	TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
 
@@ -177,7 +170,7 @@ dyco_coroutine_free(dyco_coroutine *co) {
 	if (TESTBIT(co->status, COROUTINE_FLAGS_WAITSIGNAL)) {
 		_schedule_cancel_wait(co, co->sigfd);
 		epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, co->sigfd, NULL);
-		close(co->epollfd);
+		close(co->sigfd);
 	}
 	if (co->stack) {
 		free(co->stack);

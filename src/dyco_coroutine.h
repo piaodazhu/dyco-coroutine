@@ -107,7 +107,6 @@ struct _dyco_schedule
 	// coroutine containers
 	dyco_coroutine_queue 		ready;
 	dyco_coroutine_rbtree_sleep 	sleeping;
-	// dyco_coroutine_rbtree_wait 	waiting;
 
 	dyco_htable		fd_co_map;
 	dyco_htable		cid_co_map;
@@ -133,15 +132,12 @@ struct _dyco_coroutine
 	uint64_t 		sleep_usecs;
 
 	// static info
-	// ownstack: set 1 to use co->stack when running, set 0 to use sched-stack.
 	int 			cid;
-	// int			ownstack; 
 
 	// user customized data
 	void 			*udata;
 
 	// events
-	int 			fd;		// for single event
 	int			epollfd;	// for IO multiplexing 
 	int			sigfd;		// for wait signals
 	
@@ -238,16 +234,6 @@ static inline int _coroutine_sleep_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
 		return 1;
 }
 
-static inline int _coroutine_wait_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
-{
-	if (co1->fd < co2->fd)
-		return -1;
-	else if (co1->fd == co2->fd)
-		return 0;
-	else
-		return 1;
-}
-
 // ------ 6. Inner Primes
 // coroutine
 static void _init_coro(dyco_coroutine *co);
@@ -287,34 +273,34 @@ int dyco_schedule_getCoroCount();
 // epoll
 int dyco_epoll_init();
 void dyco_epoll_destroy();
-int dyco_epoll_add(int __fd, struct epoll_event *__ev);
-int dyco_epoll_del(int __fd, struct epoll_event *__ev);
-int dyco_epoll_wait(struct epoll_event *__events, int __maxevents, int __timeout);
+int dyco_epoll_add(int fd, struct epoll_event *ev);
+int dyco_epoll_del(int fd, struct epoll_event *ev);
+int dyco_epoll_wait(struct epoll_event *events, int maxevents, int timeout);
 
 // signal
-int dyco_signal_waitchild(const pid_t __child, int *__status, int __timeout);
-int dyco_signal_init(const sigset_t *__mask);
+int dyco_signal_waitchild(const pid_t child, int *status, int timeout);
+int dyco_signal_init(const sigset_t *mask);
 void dyco_signal_destroy();
-int dyco_signal_wait(struct signalfd_siginfo *__sinfo, int __timeout);
+int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout);
 
 // half duplex channel
-dyco_channel* dyco_channel_create(size_t __size);
-void dyco_channel_destroy(dyco_channel **__chan);
-ssize_t dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeout);
-ssize_t dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __timeout);
+dyco_channel* dyco_channel_create(size_t size);
+void dyco_channel_destroy(dyco_channel **chan);
+ssize_t dyco_channel_send(dyco_channel *chan, void *buf, size_t size, int timeout);
+ssize_t dyco_channel_recv(dyco_channel *chan, void *buf, size_t maxsize, int timeout);
 
 // publish-subscribe channel
-dyco_pubsubchannel* dyco_pubsub_create(size_t __size);
-void dyco_pubsub_destroy(dyco_pubsubchannel **__pschan);
-ssize_t dyco_pubsub_publish(dyco_pubsubchannel *__pschan, void *__buf, size_t __size);
-ssize_t dyco_pubsub_subscribe(dyco_pubsubchannel *__pschan, void *__buf, size_t __maxsize, int __timeout);
+dyco_pubsubchannel* dyco_pubsub_create(size_t size);
+void dyco_pubsub_destroy(dyco_pubsubchannel **pschan);
+ssize_t dyco_pubsub_publish(dyco_pubsubchannel *pschan, void *buf, size_t size);
+ssize_t dyco_pubsub_subscribe(dyco_pubsubchannel *pschan, void *buf, size_t maxsize, int timeout);
 
 // wait group
-dyco_waitgroup* dyco_waitgroup_create(int __suggest_size);
-void dyco_waitgroup_destroy(dyco_waitgroup **__group);
-int dyco_waitgroup_add(dyco_waitgroup* __group, int __cid);
-int dyco_waitgroup_done(dyco_waitgroup* __group);
-int dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout);
+dyco_waitgroup* dyco_waitgroup_create(int suggest_size);
+void dyco_waitgroup_destroy(dyco_waitgroup **group);
+int dyco_waitgroup_add(dyco_waitgroup* group, int cid);
+int dyco_waitgroup_done(dyco_waitgroup* group);
+int dyco_waitgroup_wait(dyco_waitgroup* group, int target, int timeout);
 
 // socket
 int dyco_socket(int domain, int type, int protocol);
