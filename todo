@@ -9,62 +9,13 @@
 // hook抽出来: hook的设计，既可以直接用dyco_xxx，也可以通过开启宏定义，替换原本的调用
 // 独立栈，指定栈
 // waitchild
-waitgroup
-pubsub
+// waitgroup
+// pubsub
 // channel
-fdlistener checker
-	使用封装api 返回之前 有监听已经有取消监听
-	使用epollfd规定只能一个 返回之前需要特殊处理
-	没必要使用timerfd
-	使用waitchild
-	使用channel (TODO)
+// fdlistener checker
+//	使用封装api 返回之前 有监听已经有取消监听
+//	使用epollfd规定只能一个 返回之前需要特殊处理
+//	没必要使用timerfd
+//	使用waitchild
+//	使用channel
 make some example
-
-bug:
-if change to -1, doesn't work
-static int dyco_poll_inner(struct pollfd *fds, nfds_t nfds, int timeout)
-{
-	// timeout: Specifying a negative value  in  timeout  means  an infinite  timeout. Specifying  a timeout of zero causes dyco_poll_inner() to return immediately
-	if (timeout == 0)
-	{
-		return poll(fds, nfds, timeout);
-	}
-
-	dyco_schedule *sched = _get_sched();
-	if (sched == NULL)
-	{
-		printf("scheduler not exit!\n");
-		return -1;
-	}
-
-	dyco_coroutine *co = sched->curr_thread;
-
-	int i = 0;
-	for (i = 0; i < nfds; i++)
-	{
-
-		struct epoll_event ev;
-		ev.events = dyco_pollevent_2epoll(fds[i].events);
-		ev.data.fd = fds[i].fd;
-		epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fds[i].fd, &ev);
-
-		co->events = fds[i].events;
-		_schedule_sched_wait(co, fds[i].fd);
-	}
-	_yield(co);
-
-	for (i = 0; i < nfds; i++)
-	{
-
-		struct epoll_event ev;
-		ev.events = dyco_pollevent_2epoll(fds[i].events);
-		ev.data.fd = fds[i].fd;
-		epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fds[i].fd, &ev);
-
-		_schedule_cancel_wait(fds[i].fd);
-	}
-
-	return nfds;
-}
-
-接口的数据类型 正负数！ 32/64位

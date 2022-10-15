@@ -13,8 +13,8 @@ _wg_notify(int notifyfd, int finished_num)
 void
 _wgsublist_free(void *head)
 {
-	dyco_wgsublist *ptr = head;
-	dyco_wgsublist *next;
+	dyco_sublist *ptr = head;
+	dyco_sublist *next;
 	while (ptr != NULL) {
 		next = ptr->next;
 		close(ptr->notifyfd);
@@ -100,9 +100,9 @@ dyco_waitgroup_done(dyco_waitgroup* __group)
 	
 	++(__group->finished);
 	// notify target subscribe list
-	dyco_wgsublist *tslist = _htable_find(&__group->target_sublist_map, __group->finished);
+	dyco_sublist *tslist = _htable_find(&__group->target_sublist_map, __group->finished);
 	if (tslist != NULL) {
-		dyco_wgsublist *ptr = tslist;
+		dyco_sublist *ptr = tslist;
 		while (ptr != NULL) {
 			_wg_notify(ptr->notifyfd, __group->finished);
 			ptr = ptr->next;
@@ -111,7 +111,7 @@ dyco_waitgroup_done(dyco_waitgroup* __group)
 
 	// notify finnal list
 	if (__group->finished == __group->tot_size) {
-		dyco_wgsublist *ptr = __group->final_sublist;
+		dyco_sublist *ptr = __group->final_sublist;
 		while (ptr != NULL) {
 			_wg_notify(ptr->notifyfd, __group->finished);
 			ptr = ptr->next;
@@ -142,6 +142,9 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		return -1;
 	}
 
+	eventfd_t count;
+	int ret;
+
 	if (__target <= 0) {
 		// wait until all tasks finishes
 		if (__group->finished == __group->tot_size)
@@ -149,7 +152,7 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		
 		int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 
-		dyco_wgsublist* sub = (dyco_wgsublist*)malloc(sizeof(dyco_wgsublist));
+		dyco_sublist* sub = (dyco_sublist*)malloc(sizeof(dyco_sublist));
 		sub->notifyfd = notifyfd;
 		sub->next = NULL;
 
@@ -173,13 +176,12 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		_schedule_cancel_wait(co, notifyfd);
 		epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL);
 
-		eventfd_t count;
-		eventfd_read(notifyfd, &count);
+		ret = eventfd_read(notifyfd, &count);
 
-		dyco_wgsublist* pre = __group->final_sublist;
-		dyco_wgsublist* ptr = pre->next;
+		dyco_sublist* pre = __group->final_sublist;
+		dyco_sublist* ptr = pre->next;
 		if (pre->notifyfd == notifyfd) {
-			__group->final_sublist = pre->next;
+			__group->final_sublist = ptr;
 			close(pre->notifyfd);
 			free(pre);
 		} else {
@@ -194,8 +196,6 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 				ptr = ptr->next;
 			}
 		}
-		return (int)(count);
-
 	} else {
 		// wait until __target tasks finishes
 		if (__group->finished >= __target)
@@ -203,11 +203,11 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		
 		int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 
-		dyco_wgsublist* sub = (dyco_wgsublist*)malloc(sizeof(dyco_wgsublist));
+		dyco_sublist* sub = (dyco_sublist*)malloc(sizeof(dyco_sublist));
 		sub->notifyfd = notifyfd;
 		sub->next = NULL;
 
-		dyco_wgsublist* sublist = _htable_find(&__group->target_sublist_map, __target);
+		dyco_sublist* sublist = _htable_find(&__group->target_sublist_map, __target);
 		sub->next = sublist;
 		_htable_insert(&__group->target_sublist_map, __target, sub);
 
@@ -224,11 +224,10 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		_schedule_cancel_wait(co, notifyfd);
 		epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL);
 
-		eventfd_t count;
-		eventfd_read(notifyfd, &count);
+		ret = eventfd_read(notifyfd, &count);
 
-		dyco_wgsublist* pre = _htable_find(&__group->target_sublist_map, __target);
-		dyco_wgsublist* ptr = pre->next;
+		dyco_sublist* pre = _htable_find(&__group->target_sublist_map, __target);
+		dyco_sublist* ptr = pre->next;
 		if (pre->notifyfd == notifyfd) {
 			if (ptr != NULL)
 				_htable_insert(&__group->target_sublist_map, __target, ptr);
@@ -246,8 +245,11 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 				ptr = ptr->next;
 			}
 		}
-		return (int)(count);
 	}
+	if (ret == 0)
+		return (int)(count);
+	else
+		return -1;
 }
 
 #endif

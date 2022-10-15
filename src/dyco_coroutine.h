@@ -151,6 +151,7 @@ struct _dyco_coroutine
 typedef struct _half_duplex_channel dyco_channel;
 
 typedef enum {
+	HDC_STATUS_NOP,
 	HDC_STATUS_EMPTY,
 	HDC_STATUS_FULL,
 	HDC_STATUS_WANTREAD,
@@ -169,11 +170,12 @@ struct _half_duplex_channel {
 };
 
 
-typedef struct _waitgroup_sublist dyco_wgsublist;
+typedef struct _sublist dyco_sublist;
 typedef struct _waitgroup dyco_waitgroup;
-struct _waitgroup_sublist {
+
+struct _sublist {
 	int	notifyfd;
-	dyco_wgsublist	*next;
+	dyco_sublist	*next;
 };
 
 struct _waitgroup {
@@ -181,7 +183,28 @@ struct _waitgroup {
 	int	finished;
 	dyco_htable	cid_set;
 	dyco_htable	target_sublist_map;
-	dyco_wgsublist	*final_sublist;
+	dyco_sublist	*final_sublist;
+};
+
+typedef struct _pubsub_channel dyco_pubsubchannel;
+
+typedef enum {
+	PSC_STATUS_NOP,
+	PSC_STATUS_EMPTY,
+	PSC_STATUS_TRANS,
+	PSC_STATUS_CLOSE
+} dyco_pubsub_channel_status;
+
+struct _pubsub_channel {
+	size_t	maxsize;
+	size_t	msglen;
+	void	*msg;
+	int	pub_notifyfd;
+
+	size_t		sub_num;
+	size_t		ack_rem;
+	dyco_sublist	*sublist;
+	dyco_pubsub_channel_status	status;
 };
 
 // ------ 5. Function Utils
@@ -273,9 +296,14 @@ void dyco_channel_destroy(dyco_channel **__chan);
 ssize_t dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeout);
 ssize_t dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __timeout);
 
+// publish-subscribe channel
+dyco_pubsubchannel* dyco_pubsub_create(size_t __size);
+void dyco_pubsub_destroy(dyco_pubsubchannel **__pschan);
+ssize_t dyco_pubsub_publish(dyco_pubsubchannel *__pschan, void *__buf, size_t __size);
+ssize_t dyco_pubsub_subscribe(dyco_pubsubchannel *__pschan, void *__buf, size_t __maxsize, int __timeout);
 // wait group
 dyco_waitgroup* dyco_waitgroup_create(int __suggest_size);
-void dyco_waitgroup_destroy(dyco_waitgroup** __group);
+void dyco_waitgroup_destroy(dyco_waitgroup **__group);
 int dyco_waitgroup_add(dyco_waitgroup* __group, int __cid);
 int dyco_waitgroup_done(dyco_waitgroup* __group);
 int dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout);

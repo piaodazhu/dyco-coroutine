@@ -40,8 +40,12 @@ _hdc_wait(dyco_channel* chan, int timeout)
 	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, chan->notifyfd, NULL);
 
 	eventfd_t count;
-    	eventfd_read(chan->notifyfd, &count);
-	return (half_duplex_channel_status)(count);
+	int ret;
+    	ret = eventfd_read(chan->notifyfd, &count);
+	if (ret == 0)
+		return (half_duplex_channel_status)(count);
+	else
+		return HDC_STATUS_NOP;
 }
 
 
