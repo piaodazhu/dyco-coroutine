@@ -24,11 +24,6 @@ dyco_epoll_init()
 	co->epollfd = epoll_create(1024);
 	SETBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING);
 
-	struct epoll_event ev;
-	ev.data.fd = co->epollfd;
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, ev.data.fd, &ev);
-	_schedule_sched_wait(co, ev.data.fd);
 	// printf("dyco_epoll_init cid = %d, status = %d\n", co->cid, co->status);
 	return co->epollfd;
 } 
@@ -58,11 +53,20 @@ dyco_epoll_wait(struct epoll_event *__events, int __maxevents, int __timeout)
 		return epoll_wait_f(co->epollfd, __events, __maxevents, 0);
 	}
 
+	struct epoll_event ev;
+	ev.data.fd = co->epollfd;
+	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR;
+	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, co->epollfd, &ev);
+	_schedule_sched_wait(co, co->epollfd);
+
 	_schedule_sched_sleep(co, __timeout);
 
 	_yield(co);
 
 	_schedule_cancel_sleep(co);
+
+	_schedule_cancel_wait(co, co->epollfd);
+	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, co->epollfd, NULL);
 
 	return epoll_wait_f(co->epollfd, __events, __maxevents, 0);
 }
@@ -133,8 +137,7 @@ dyco_epoll_destroy()
 		return;
 	}
 
-	_schedule_cancel_wait(co, co->epollfd);
-	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, co->epollfd, NULL);
+	
 	CLRBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING);
 	close(co->epollfd);
 	

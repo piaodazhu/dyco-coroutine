@@ -26,6 +26,7 @@ struct _dyco_htable
 };
 
 #define HTABLE_EMPTY(ht)	((ht)->_count == 0)
+#define HTABLE_SIZE(ht)	((ht)->_count)
 static dyco_htable* _htable_create(int width);
 static int _htable_init(dyco_htable *ht, int width);
 static void _htable_clear(dyco_htable *ht);

@@ -18,6 +18,7 @@ _sched_key_creator(void) {
 static void 
 _exec(void *lt) {
 	dyco_coroutine *co = (dyco_coroutine*)lt;
+	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
 	co->func(co->arg);
 	SETBIT(co->status, COROUTINE_STATUS_EXITED);
 	_yield(co);
@@ -41,7 +42,7 @@ _init_coro(dyco_coroutine *co) {
 	return;
 }
 
-static void
+void
 _save_stack(dyco_coroutine *co) {
 	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK))
 		return;
@@ -73,7 +74,9 @@ _yield(dyco_coroutine *co) {
 		_save_stack(co);
 	}
 	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
+	// printf("tag31\n");
 	swapcontext(&co->ctx, &co->sched->ctx);
+	// printf("tag32\n");
 	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
 }
 
@@ -91,17 +94,32 @@ _resume(dyco_coroutine *co) {
 	++co->sched_count;
 	
 	sched->curr_thread = co;
-	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
+	// SETBIT(co->status, COROUTINE_STATUS_RUNNING);
 	swapcontext(&sched->ctx, &co->ctx);
-	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
+	while (TESTBIT(co->status, COROUTINE_STATUS_SCHEDCALL)) {
+		// printf("schedcall\n");
+		if (_schedule_callexec(sched)) {
+			printf("return to coro ctx\n");
+			swapcontext(&sched->ctx, &co->ctx);
+		} else {
+			return 1;
+		}
+	}
+	// CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
 	sched->curr_thread = NULL;
+	// printf("back\n");
+	// struct epoll_event ev;
+	// int ret = epoll_wait_f(sched->epollfd, &ev, 1, -1);
+	// printf("ret = %d\n", ret);
+	
 
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED)) {
 		printf("** finish coro %d **\n", co->cid);
 		_schedule_cancel_sleep(co);
 		dyco_coroutine_free(co);
+		// printf("[i] %d coros remain, ht 1: %d, ht2: %d, rbt: %d\n", sched->coro_count, HTABLE_EMPTY(&sched->cid_co_map), HTABLE_EMPTY(&sched->fd_co_map), RB_EMPTY(&sched->sleeping));
 		return -1;
-	} 
+	}
 	return 0;
 }
 
@@ -151,6 +169,9 @@ dyco_coroutine_create(proc_coroutine func, void *arg) {
 	++sched->coro_count;
 	TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
 
+	if (sched->status == SCHEDULE_STATUS_DONE) {
+		sched->status = SCHEDULE_STATUS_READY;
+	}
 	return co->cid;
 }
 
@@ -168,11 +189,12 @@ dyco_coroutine_free(dyco_coroutine *co) {
 		close(co->epollfd);
 	}
 	if (TESTBIT(co->status, COROUTINE_FLAGS_WAITSIGNAL)) {
-		_schedule_cancel_wait(co, co->sigfd);
-		epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, co->sigfd, NULL);
+		// _schedule_cancel_wait(co, co->sigfd);
+		// epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, co->sigfd, NULL);
+		sigprocmask(SIG_SETMASK, &co->old_sigmask, NULL);
 		close(co->sigfd);
 	}
-	if (co->stack) {
+	if ((!TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK)) && co->stack) {
 		free(co->stack);
 		co->stack = NULL;
 	}
@@ -235,8 +257,10 @@ dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize)
 	if (co == NULL) {
 		return -1;
 	}
-	*stackptr = co->stack;
-	*stacksize = co->stack_size;
+	if (stackptr != NULL)
+		*stackptr = co->stack;
+	if (stacksize != NULL)
+		*stacksize = co->stack_size;
 	return TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK);
 }
 

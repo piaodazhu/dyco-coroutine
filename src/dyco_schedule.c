@@ -18,7 +18,6 @@ _schedule_get_expired(dyco_schedule *sched)
 		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
 		CLRBIT(co->status, COROUTINE_STATUS_SLEEPING);
 		SETBIT(co->status, COROUTINE_FLAGS_EXPIRED);
-		printf("sleeptree remove co %d\n", co->cid);
 		return co;
 	}
 	return NULL;
@@ -40,12 +39,12 @@ _schedule_min_timeout(dyco_schedule *sched)
 static int 
 _schedule_epoll_wait(dyco_schedule *sched)
 {
-	sched->num_new_events = 0;
-	if (!TAILQ_EMPTY(&sched->ready)) return 0;
+	if (!TAILQ_EMPTY(&sched->ready) || HTABLE_EMPTY(&sched->fd_co_map)) return 0;
 
 	uint64_t timeout = _schedule_min_timeout(sched);
 	if (timeout == 0) return 0;
 
+	
 	int nready = -1;
 	while (1)
 	{
@@ -59,9 +58,8 @@ _schedule_epoll_wait(dyco_schedule *sched)
 		}
 		break;
 	}
-	sched->num_new_events = nready;
-
-	return 0;
+// printf("wait = %d, nready = %d\n", HTABLE_SIZE(&sched->fd_co_map), nready);
+	return nready;
 }
 
 dyco_coroutine*
@@ -120,8 +118,7 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 	sched->birth = _usec_now();
 	sched->coro_count = 0;
 	sched->_cid_gen = 0;
-	
-	sched->num_new_events = 0;
+	sched->status = SCHEDULE_STATUS_READY;
 	sched->curr_thread = NULL;
 
 	sched->udata = NULL;
@@ -132,6 +129,17 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 
 	_htable_init(&sched->fd_co_map, 0);
 	_htable_init(&sched->cid_co_map, 0);
+
+
+	// sigset_t sigmask;
+	// sigemptyset(&sigmask);
+    	// sigaddset(&sigmask, SIGINT);
+	// sigprocmask(SIG_BLOCK, &sigmask, NULL);
+	// int sigfd = signalfd(-1, &sigmask, SFD_NONBLOCK);
+	// struct epoll_event ev;
+	// ev.data.fd = sigfd;
+	// ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
+	// epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, sigfd, &ev);
 
 	return 0;
 }
@@ -198,36 +206,95 @@ _schedule_sched_wait(dyco_coroutine *co, int fd)
 }
 
 void
+_schedule_stop(dyco_schedule *__sched)
+{
+	__sched->status = SCHEDULE_STATUS_STOPPED;
+	// dyco_coroutine *co  = __sched->curr_thread;
+	// CLRBIT(co->status, COROUTINE_STATUS_SCHEDCALL);
+	// SETBIT(co->status, COROUTINE_STATUS_READY);
+	// TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
+	// _save_stack(co);
+	__sched->curr_thread = NULL;
+	return;
+}
+
+
+void
+_schedule_abort(dyco_schedule *__sched)
+{
+	// do some clear work
+	dyco_coroutine *co;
+	int cnt1 = 0, cnt2 = 0, cnt3 = __sched->coro_count;
+	while (!TAILQ_EMPTY(&__sched->ready))
+	{
+		co = TAILQ_FIRST(&__sched->ready);
+		TAILQ_REMOVE(&co->sched->ready, co, ready_next);
+		dyco_coroutine_free(co);
+		++cnt1;
+	}
+	
+	while ((co = RB_MIN(_dyco_coroutine_rbtree_sleep, &__sched->sleeping)) != NULL) {
+		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
+		dyco_coroutine_free(co);
+		++cnt2;
+	}
+	dyco_coroutine_free(__sched->curr_thread);
+	__sched->curr_thread = NULL;
+	// printf("total = %d, readyq = %d, rbtree = %d\n", cnt3, cnt1, cnt2);
+	assert(__sched->coro_count == 0);
+	__sched->status = SCHEDULE_STATUS_ABORTED;
+}
+
+int
 dyco_schedule_run()
 {
-
 	dyco_schedule *sched = _get_sched();
 	if (sched == NULL)
-		return;
+		return -2;
 
+	int nready;
+	dyco_coroutine *expired;
+	dyco_coroutine *last_co_ready;
+
+	if (sched->status == SCHEDULE_STATUS_ABORTED) {
+		return -2;
+	}
+	else if (sched->status == SCHEDULE_STATUS_DONE) {
+		return 0;
+	}
+	sched->status = SCHEDULE_STATUS_RUNNING;
 	while (!SCHEDULE_ISDONE(sched))
 	{
-		dyco_coroutine *expired = NULL;
+		expired = NULL;
 		while ((expired = _schedule_get_expired(sched)) != NULL)
 		{
 			_resume(expired);
+			if (sched->status == SCHEDULE_STATUS_STOPPED)
+				return 1;
+			else if (sched->status == SCHEDULE_STATUS_ABORTED)
+				return -1;
 		}
 
-		dyco_coroutine *last_co_ready = TAILQ_LAST(&sched->ready, _dyco_coroutine_queue);
+		last_co_ready = TAILQ_LAST(&sched->ready, _dyco_coroutine_queue);
 		while (!TAILQ_EMPTY(&sched->ready))
 		{
 			dyco_coroutine *co = TAILQ_FIRST(&sched->ready);
 			TAILQ_REMOVE(&co->sched->ready, co, ready_next);
 			CLRBIT(co->status, COROUTINE_STATUS_READY);
 			_resume(co);
+			if (sched->status == SCHEDULE_STATUS_STOPPED)
+				return 1;
+			else if (sched->status == SCHEDULE_STATUS_ABORTED)
+				return -1;
+			
 			if (co == last_co_ready)
 				break;
 		}
 
-		_schedule_epoll_wait(sched);
-		while (sched->num_new_events)
+		nready = _schedule_epoll_wait(sched);
+		while (nready)
 		{
-			int idx = --sched->num_new_events;
+			int idx = --nready;
 			struct epoll_event *ev = sched->eventlist + idx;
 			int fd = ev->data.fd;
 
@@ -235,10 +302,15 @@ dyco_schedule_run()
 			if (co != NULL)
 			{
 				_resume(co);
+				if (sched->status == SCHEDULE_STATUS_STOPPED)
+					return 1;
+				else if (sched->status == SCHEDULE_STATUS_DONE)
+					return 0;
 			}
 		}
 	}
-	return;
+	sched->status = SCHEDULE_STATUS_DONE;
+	return 0;
 }
 
 int

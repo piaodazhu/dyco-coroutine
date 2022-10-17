@@ -158,10 +158,6 @@ void cofunc1(void *arg)
 		}
 	}
 
-	char *dname = "www.baidu.com";
-	struct hostent *res = gethostbyname(dname);
-	printf("gethostname return %d\n", res->h_length);
-
 	dyco_epoll_del(tfd1, NULL);
 	dyco_epoll_del(tfd2, NULL);
 	dyco_epoll_del(tfd3, NULL);

@@ -12,10 +12,13 @@
 // waitgroup
 // pubsub
 // channel
+semaphore
 // fdlistener checker
 //	使用封装api 返回之前 有监听已经有取消监听
 //	使用epollfd规定只能一个 返回之前需要特殊处理
 //	没必要使用timerfd
 //	使用waitchild
 //	使用channel
+bug: signal事件 切换上下文后无法监听，sigmusk
+
 make some example

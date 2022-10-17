@@ -60,8 +60,18 @@ extern pthread_key_t global_sched_key;
 
 typedef struct _dyco_schedule dyco_schedule;
 typedef struct _dyco_coroutine dyco_coroutine;
+typedef struct _schedcall dyco_schedcall;
 
 typedef void (*proc_coroutine)(void *);
+typedef enum
+{
+	SCHEDULE_STATUS_READY,
+	SCHEDULE_STATUS_RUNNING,
+	SCHEDULE_STATUS_STOPPED,
+	SCHEDULE_STATUS_ABORTED,
+	SCHEDULE_STATUS_DONE
+} dyco_schedule_status;
+
 typedef enum
 {
 	COROUTINE_STATUS_NEW,
@@ -69,6 +79,7 @@ typedef enum
 	COROUTINE_STATUS_EXITED,
 	COROUTINE_STATUS_RUNNING,
 	COROUTINE_STATUS_SLEEPING,
+	COROUTINE_STATUS_SCHEDCALL,
 
 	COROUTINE_FLAGS_OWNSTACK,
 	COROUTINE_FLAGS_WAITING,
@@ -76,6 +87,20 @@ typedef enum
 	COROUTINE_FLAGS_IOMULTIPLEXING,
 	COROUTINE_FLAGS_WAITSIGNAL
 } dyco_coroutine_status;
+
+// -----------
+typedef enum {
+	CALLNUM_SIGPROCMASK,
+	CALLNUM_SCHED_STOP,
+	CALLNUM_SCHED_ABORT
+} dyco_schedcall_num;
+
+struct _schedcall {
+	dyco_schedcall_num	callnum;
+	int	ret;
+	void	*arg;
+};
+// -----------
 
 struct _dyco_schedule
 {
@@ -98,8 +123,9 @@ struct _dyco_schedule
 	// dynamic info
 	unsigned int		coro_count;
 	unsigned int		_cid_gen;
-	unsigned int 		num_new_events;
 	dyco_coroutine 		*curr_thread;
+	dyco_schedcall		schedcall;
+	dyco_schedule_status	status;
 
 	// user customized data
 	void 			*udata;
@@ -130,6 +156,7 @@ struct _dyco_coroutine
 	uint32_t 		status;
 	uint32_t 		sched_count;
 	uint64_t 		sleep_usecs;
+	sigset_t		old_sigmask;
 
 	// static info
 	int 			cid;
@@ -144,7 +171,6 @@ struct _dyco_coroutine
 	// container node
 	TAILQ_ENTRY(_dyco_coroutine) 	ready_next;
 	RB_ENTRY(_dyco_coroutine) 	sleep_node;
-	// RB_ENTRY(_dyco_coroutine) 	wait_node;
 };
 
 typedef struct _half_duplex_channel dyco_channel;
@@ -245,7 +271,9 @@ void _schedule_sched_sleep(dyco_coroutine *co, int msecs);
 void _schedule_cancel_sleep(dyco_coroutine *co);
 void _schedule_sched_wait(dyco_coroutine *co, int fd);
 dyco_coroutine *_schedule_cancel_wait(dyco_coroutine *co, int fd);
-
+int _schedule_callexec(dyco_schedule *__sched);
+void _schedule_stop(dyco_schedule *__sched);
+void _schedule_abort(dyco_schedule *__sched);
 
 // ------ 7. User APIs
 // coroutine
@@ -261,7 +289,7 @@ int dyco_coroutine_getUdata(int cid, void **udata);
 int dyco_coroutine_getSchedCount(int cid);
 
 // scheduler
-void dyco_schedule_run();
+int dyco_schedule_run();
 int  dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout);
 void  dyco_schedule_free(dyco_schedule *sched);
 
@@ -269,6 +297,11 @@ int dyco_schedule_schedID();
 int dyco_schedule_setUdata(void *udata);
 int dyco_schedule_getUdata(void **udata);
 int dyco_schedule_getCoroCount();
+
+// scheduler call
+int dyco_schedcall_sigprocmask(int __how, sigset_t *__set, sigset_t *__oset);
+void dyco_schedcall_stop();
+void dyco_schedcall_abort();
 
 // epoll
 int dyco_epoll_init();
@@ -279,7 +312,7 @@ int dyco_epoll_wait(struct epoll_event *events, int maxevents, int timeout);
 
 // signal
 int dyco_signal_waitchild(const pid_t child, int *status, int timeout);
-int dyco_signal_init(const sigset_t *mask);
+int dyco_signal_init(sigset_t *mask);
 void dyco_signal_destroy();
 int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout);
 
