@@ -75,7 +75,7 @@ _psc_subwait(dyco_pubsubchannel* pschan, int timeout)
 			if (ptr->notifyfd == notifyfd) {
 				pre->next = ptr->next;
 				close(ptr->notifyfd);
-				free(pre);
+				free(ptr);
 				break;
 			}
 			pre = ptr;
@@ -85,7 +85,8 @@ _psc_subwait(dyco_pubsubchannel* pschan, int timeout)
 
 	if (ret == 0) {
 		if (--(pschan->ack_rem) == 0)
-			_psc_pubnotify(pschan);
+			// _psc_pubnotify(pschan);
+			return PSC_STATUS_EMPTY;
 
 		return (dyco_pubsub_channel_status)(count);
 	} else {
@@ -109,25 +110,25 @@ _psc_pubwait(dyco_pubsubchannel* pschan, int timeout)
 		return pschan->status;
 	}
 
-	int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	pschan->pub_notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 	struct epoll_event ev;
-	ev.data.fd = notifyfd;
+	ev.data.fd = pschan->pub_notifyfd;
 	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev);
-	_schedule_sched_wait(co, notifyfd);
+	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, pschan->pub_notifyfd, &ev);
+	_schedule_sched_wait(co, pschan->pub_notifyfd);
 	_schedule_sched_sleep(co, timeout);
 
 	_yield(co);
 
 	_schedule_cancel_sleep(co);
-	_schedule_cancel_wait(co, notifyfd);
-	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL);
+	_schedule_cancel_wait(co, pschan->pub_notifyfd);
+	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, pschan->pub_notifyfd, NULL);
 
 	eventfd_t count;
 	int ret;
-    	ret = eventfd_read(notifyfd, &count);
+    	ret = eventfd_read(pschan->pub_notifyfd, &count);
 
-	close(notifyfd);
+	close(pschan->pub_notifyfd);
 	if (ret == 0)
 		return (dyco_pubsub_channel_status)(count);
 	else
@@ -196,13 +197,16 @@ ssize_t dyco_pubsub_subscribe(dyco_pubsubchannel *__pschan, void *__buf, size_t 
 		return -2;
 	
 	int ret = -2;
+	dyco_pubsub_channel_status status;
 	switch (__pschan->status) {
 		case PSC_STATUS_EMPTY:
 		case PSC_STATUS_TRANS:
-			_psc_subwait(__pschan, __timeout);
-			switch (__pschan->status) {
+			status = _psc_subwait(__pschan, __timeout);
+			switch (status) {
 				case PSC_STATUS_EMPTY:
-					ret = 0;
+					ret = __pschan->msglen;
+					memcpy(__buf, __pschan->msg, ret);
+					_psc_pubnotify(__pschan);
 					break;
 				case PSC_STATUS_TRANS:
 					ret = __pschan->msglen;

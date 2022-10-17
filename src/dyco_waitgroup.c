@@ -231,6 +231,8 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		if (pre->notifyfd == notifyfd) {
 			if (ptr != NULL)
 				_htable_insert(&__group->target_sublist_map, __target, ptr);
+			else	
+				_htable_delete(&__group->target_sublist_map, __target, NULL);
 			close(pre->notifyfd);
 			free(pre);
 		} else {

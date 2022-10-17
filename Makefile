@@ -7,7 +7,7 @@ ROOT_DIR = $(shell pwd)
 OBJS_DIR = $(ROOT_DIR)/objs
 BIN_DIR = $(ROOT_DIR)/bin
 
-BIN = socket_server_example socket_client_example dyco_bench dyco_server_mulcore dyco_http_server dyco_mysql_client dyco_mysql_oper dyco_websocket_server dyco_http_server_mulcore dyco_httpd dyco_rediscli epoll_example sleep_example setstack_example signal_example stop_abort_example
+BIN = socket_server_example socket_client_example dyco_bench dyco_server_mulcore dyco_http_server dyco_mysql_client dyco_mysql_oper dyco_websocket_server dyco_http_server_mulcore dyco_httpd dyco_rediscli epoll_example sleep_example setstack_example signal_example stop_abort_example channel_example waitgroup_example pubsub_example
 FLAG = -lpthread -O3 -lcrypto -lssl -lmysqlclient -lhiredis -ldl -I $(ROOT_DIR)/src  -I /usr/include/mysql/ -I /usr/local/include/hiredis/
 
 CUR_SOURCE = ${wildcard *.c}
@@ -76,6 +76,16 @@ signal_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dy
 
 stop_abort_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/stop_abort.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
+
+channel_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/dyco_channel.o $(OBJS_DIR)/channel.o
+	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
+
+waitgroup_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/dyco_waitgroup.o $(OBJS_DIR)/waitgroup.o
+	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
+
+pubsub_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/dyco_pubsub.o $(OBJS_DIR)/pubsub.o
+	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
+
 clean :
 	rm -rf $(BIN_DIR)/* $(OBJS_DIR)/*
 

@@ -190,7 +190,8 @@ struct _half_duplex_channel {
 	size_t msglen;
 	void *msg;
 
-	int notifyfd;
+	int r_notifyfd;
+	int w_notifyfd;
 	half_duplex_channel_status status;
 };
 
