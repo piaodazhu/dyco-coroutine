@@ -36,6 +36,7 @@
 
 // ------ 2. User Configurations
 #define COROUTINE_HOOK
+#define	DYCO_SSL_ENABLE
 #define DYCO_MAX_EVENTS			256
 #define DYCO_MAX_STACKSIZE		(64 * 1024)
 #define DYCO_DEFAULT_TIMEOUT		3000000
@@ -233,6 +234,16 @@ struct _pubsub_channel {
 	dyco_pubsub_channel_status	status;
 };
 
+
+typedef struct _semaphore dyco_semaphore;
+typedef struct _sublist dyco_semwait_queue;
+typedef struct _sublist dyco_semwait_node;
+
+struct _semaphore {
+	int	semval;
+	dyco_semwait_queue	*wqueue;
+	dyco_semwait_node	*wtail;
+};
 // ------ 5. Function Utils
 static inline dyco_schedule *_get_sched(void)
 {
@@ -266,6 +277,7 @@ static inline int _coroutine_sleep_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
 static void _init_coro(dyco_coroutine *co);
 int _resume(dyco_coroutine *co);
 void _yield(dyco_coroutine *co);
+int _wait_events(int fd, unsigned int events, int timeout);
 
 // scheduler
 void _schedule_sched_sleep(dyco_coroutine *co, int msecs);
@@ -281,6 +293,9 @@ void _schedule_abort(dyco_schedule *__sched);
 int dyco_coroutine_create(proc_coroutine func, void *arg);
 void dyco_coroutine_free(dyco_coroutine *co);
 void dyco_coroutine_sleep(uint32_t msecs);
+int dyco_coroutine_waitRead(int fd, int timeout);
+int dyco_coroutine_waitWrite(int fd, int timeout);
+int dyco_coroutine_waitRW(int fd, int timeout);
 
 int dyco_coroutine_coroID();
 int dyco_coroutine_setStack(int cid, void *stackptr, size_t stacksize);
@@ -336,6 +351,12 @@ int dyco_waitgroup_add(dyco_waitgroup* group, int cid);
 int dyco_waitgroup_done(dyco_waitgroup* group);
 int dyco_waitgroup_wait(dyco_waitgroup* group, int target, int timeout);
 
+// semaphore
+dyco_semaphore* dyco_semaphore_create(size_t value);
+void dyco_semaphore_destroy(dyco_semaphore **sem);
+int dyco_semaphore_wait(dyco_semaphore *sem, int timeout);
+int dyco_semaphore_signal(dyco_semaphore *sem);
+
 // socket
 int dyco_socket(int domain, int type, int protocol);
 int dyco_close(int fd);
@@ -349,7 +370,16 @@ ssize_t dyco_recvfrom(int fd, void *buf, size_t len, int flags,
 		      struct sockaddr *src_addr, socklen_t *addrlen);
 int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
 
+// ssl
+#ifdef DYCO_SSL_ENABLE
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+int dyco_SSL_accept(SSL *ssl);
+int dyco_SSL_connect(SSL *ssl);
+int dyco_SSL_read(SSL *ssl, void *buf, int num);
+int dyco_SSL_write(SSL *ssl, const void *buf, int num);
 
+#endif
 // ------ 8. Hook Function Type
 typedef int (*socket_t)(int domain, int type, int protocol);
 typedef int (*close_t)(int);
@@ -361,7 +391,7 @@ typedef ssize_t (*sendto_t)(int sockfd, const void *buf, size_t len, int flags,
 			    const struct sockaddr *dest_addr, socklen_t addrlen);
 typedef ssize_t (*recvfrom_t)(int sockfd, void *buf, size_t len, int flags,
 			      struct sockaddr *src_addr, socklen_t *addrlen);
-typedef ssize_t (*epoll_wait_t)(int epfd, struct epoll_event *events, 
+typedef int (*epoll_wait_t)(int epfd, struct epoll_event *events, 
 				int maxevents, int timeout);
 
 // ------ 9. Hook Function Handler
