@@ -5,15 +5,18 @@ void cofunc(void *arg)
 	void *udata;
 	dyco_schedule_getUdata(&udata);
 	dyco_semaphore *sem = udata;
-	
-	printf("[cofunc] I am coro %d. I'm going to critical section\n", dyco_coroutine_coroID());
+	int ret;
 
-	assert(dyco_semaphore_wait(sem, -1) == 0);
+	printf("[cofunc] I am coro %d. I'm going to critical section\n", dyco_coroutine_coroID());
+	
+	ret = dyco_semaphore_wait(sem, -1);
+	assert(ret == 0);
 
 	printf("[cofunc] I am coro %d. I'm in critical section\n", dyco_coroutine_coroID());
 	dyco_coroutine_sleep(1000);
 
-	assert(dyco_semaphore_signal(sem) == 0);
+	ret = dyco_semaphore_signal(sem);
+	assert(ret == 0);
 	printf("[cofunc] I am coro %d. I exited critical section\n", dyco_coroutine_coroID());
 	
 	return;

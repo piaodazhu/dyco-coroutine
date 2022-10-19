@@ -88,13 +88,13 @@ void client(void *arg) {
 		printf("echo send length : %d\n", length);
 		if (length <= 0) {
 			perror("dyco_send() wrong!\n");
-			abort();
+			ABORT();
 		}
 		length = dyco_recv(clientfd, buf, 2048, 0);
 		printf("echo recv length : %d\n", length);
 		if (length <= 0) {
 			perror("dyco_recv() wrong!\n");
-			abort();
+			ABORT();
 		}
 		sleep(1);
 	}

@@ -24,7 +24,6 @@ dyco_epoll_init()
 	co->epollfd = epoll_create(1024);
 	SETBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING);
 
-	// printf("dyco_epoll_init cid = %d, status = %d\n", co->cid, co->status);
 	return co->epollfd;
 } 
 
@@ -41,10 +40,9 @@ dyco_epoll_wait(struct epoll_event *__events, int __maxevents, int __timeout)
 		perror("ERROR: dyco_epoll_* can only be called inside coroutine functions!");
 		return -1;
 	}
-	// printf("+++ dyco_epoll_wait cid = %d, status = %d\n", co->cid, co->status);
 	if (!TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
 		perror("ERROR: 4dyco_epoll_init haven't been called!");
-		abort();
+		ABORT();
 		return -1;
 	}
 
@@ -161,7 +159,7 @@ epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 	if (co == NULL) {
 		return -1;
 	}
-	// printf("++ epoll_wait cid = %d, status = %d\n", co->cid, co->status);
+
 	struct epoll_event ev;
 	ev.data.fd = epfd;
 	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
@@ -174,7 +172,7 @@ epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, epfd);
 	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, epfd, NULL);
-// printf("-- epoll_wait cid = %d, status = %d\n", co->cid, co->status);
+
 	return epoll_wait_f(epfd, events, maxevents, 0);
 }
 

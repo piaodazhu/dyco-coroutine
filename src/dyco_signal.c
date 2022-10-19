@@ -21,7 +21,6 @@ int dyco_signal_waitchild(const pid_t child, int *status, int timeout)
 	sigset_t sigmask;
 	sigemptyset(&sigmask);
 	sigaddset(&sigmask, SIGCHLD);
-	// sigprocmask(SIG_BLOCK, &sigmask, NULL);
 	dyco_schedcall_sigprocmask(SIG_BLOCK, &sigmask, &co->old_sigmask);
 	int sigfd = signalfd(-1, &sigmask, SFD_NONBLOCK);
 
@@ -63,9 +62,6 @@ int dyco_signal_init(sigset_t *mask)
 	co->sigfd = sigfd;
 	SETBIT(co->status, COROUTINE_FLAGS_WAITSIGNAL);
 
-	
-	// int ret = epoll_wait_f(sched->epollfd, &ev, 1, -1);
-	// printf("ret = %d\n", ret);
 	return sigfd;
 }
 
@@ -113,9 +109,6 @@ int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout)
 		return ret;
 	}
 
-// printf("yeild\n");
-// printf("%d\n",_htable_contains(&sched->fd_co_map, co->sigfd));
-
 	struct epoll_event ev;
 	ev.data.fd = co->sigfd;
 	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
@@ -131,7 +124,6 @@ int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout)
 	_schedule_cancel_wait(co, co->sigfd);
 	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, co->sigfd, NULL);
 
-// printf("go back\n");
 	return read(co->sigfd, sinfo, sizeof(struct signalfd_siginfo));
 }
 

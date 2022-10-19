@@ -4,45 +4,6 @@
 #define TIMEOUT_INFINIT		-1
 #define TIMEOUT_NONE		0
 
-// static int
-// _wait_events(int fd, unsigned int events, int timeout)
-// {
-// 	// events: uint32 epoll event
-// 	// timeout: Specifying a negative value  in  timeout  means  an infinite  timeout. Specifying  a timeout of zero causes dyco_poll_inner() to return immediately
-	
-// 	// fast return
-// 	struct pollfd pfd;
-// 	pfd.fd = fd;
-// 	pfd.events = POLLIN | POLLERR | POLLHUP;
-// 	if (timeout == 0) {
-// 		return poll(&pfd, 1, 0);
-// 	}
-
-// 	dyco_schedule *sched = _get_sched();
-// 	if (sched == NULL) {
-// 		return -1;
-// 	}
-// 	dyco_coroutine *co = sched->curr_thread;
-// 	if (co == NULL) {
-// 		return -1;
-// 	}
-
-// 	struct epoll_event ev;
-// 	ev.data.fd = fd;
-// 	ev.events = events;
-// 	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fd, &ev);
-// 	_schedule_sched_wait(co, fd);
-// 	_schedule_sched_sleep(co, timeout);
-
-// 	_yield(co);
-
-// 	_schedule_cancel_sleep(co);
-// 	_schedule_cancel_wait(co, fd);
-// 	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, &ev);
-
-// 	return 0;
-// }
-
 int
 dyco_socket(int domain, int type, int protocol)
 {

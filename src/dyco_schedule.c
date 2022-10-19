@@ -54,7 +54,7 @@ _schedule_epoll_wait(dyco_schedule *sched)
 			if (errno == EINTR)
 				continue;
 			else
-				assert(0);
+				ABORT();
 		}
 		break;
 	}
@@ -85,7 +85,8 @@ dyco_schedule_free(dyco_schedule *sched)
 
 	free(sched);
 
-	assert(pthread_setspecific(global_sched_key, NULL) == 0);
+	int ret = pthread_setspecific(global_sched_key, NULL);
+	assert(ret == 0);
 }
 
 int 
@@ -95,21 +96,22 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 	if (sched == NULL)
 	{
 		printf("Failed to initialize scheduler\n");
-		abort();
+		ABORT();
 	}
-	assert(pthread_setspecific(global_sched_key, sched) == 0);
+	int ret = pthread_setspecific(global_sched_key, sched);
+	assert(ret == 0);
 
 	sched->epollfd = epoll_create(1024);
 	if (sched->epollfd == -1)
 	{
 		printf("Failed to initialize epoller\n");
-		abort();
+		ABORT();
 	}
 
 	int sched_stack_size = stack_size ? stack_size : DYCO_MAX_STACKSIZE;
 	sched->stack_size = sched_stack_size;
 	int page_size = getpagesize();
-	int ret = posix_memalign(&sched->stack, page_size, sched->stack_size);
+	ret = posix_memalign(&sched->stack, page_size, sched->stack_size);
 	assert(ret == 0);
 
 	pthread_t tid = pthread_self();
@@ -125,21 +127,9 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 	
 	TAILQ_INIT(&sched->ready);
 	RB_INIT(&sched->sleeping);
-	// RB_INIT(&sched->waiting);
 
 	_htable_init(&sched->fd_co_map, 0);
 	_htable_init(&sched->cid_co_map, 0);
-
-
-	// sigset_t sigmask;
-	// sigemptyset(&sigmask);
-    	// sigaddset(&sigmask, SIGINT);
-	// sigprocmask(SIG_BLOCK, &sigmask, NULL);
-	// int sigfd = signalfd(-1, &sigmask, SFD_NONBLOCK);
-	// struct epoll_event ev;
-	// ev.data.fd = sigfd;
-	// ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	// epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, sigfd, &ev);
 
 	return 0;
 }
@@ -199,8 +189,8 @@ _schedule_cancel_wait(dyco_coroutine *co, int fd)
 void
 _schedule_sched_wait(dyco_coroutine *co, int fd)
 {
-
-	assert(_htable_insert(&co->sched->fd_co_map, fd, co) >= 0);
+	int ret = _htable_insert(&co->sched->fd_co_map, fd, co);
+	assert(ret >= 0);
 	SETBIT(co->status, COROUTINE_FLAGS_WAITING);
 	return;
 }
@@ -209,11 +199,6 @@ void
 _schedule_stop(dyco_schedule *__sched)
 {
 	__sched->status = SCHEDULE_STATUS_STOPPED;
-	// dyco_coroutine *co  = __sched->curr_thread;
-	// CLRBIT(co->status, COROUTINE_STATUS_SCHEDCALL);
-	// SETBIT(co->status, COROUTINE_STATUS_READY);
-	// TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
-	// _save_stack(co);
 	__sched->curr_thread = NULL;
 	return;
 }
@@ -222,7 +207,7 @@ _schedule_stop(dyco_schedule *__sched)
 void
 _schedule_abort(dyco_schedule *__sched)
 {
-	// do some clear work
+	// do some cleaning work
 	dyco_coroutine *co;
 	int cnt1 = 0, cnt2 = 0, cnt3 = __sched->coro_count;
 	while (!TAILQ_EMPTY(&__sched->ready))
@@ -240,7 +225,6 @@ _schedule_abort(dyco_schedule *__sched)
 	}
 	dyco_coroutine_free(__sched->curr_thread);
 	__sched->curr_thread = NULL;
-	// printf("total = %d, readyq = %d, rbtree = %d\n", cnt3, cnt1, cnt2);
 	assert(__sched->coro_count == 0);
 	__sched->status = SCHEDULE_STATUS_ABORTED;
 }

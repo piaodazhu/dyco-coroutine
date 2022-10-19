@@ -62,16 +62,17 @@ void boss(void *arg)
 	
 	printf("[boss] I am coro %d. I'm about create 8 workers\n", dyco_coroutine_coroID());
 
-	int i, cid, totol = 8;
+	int i, ret, cid, totol = 8;
 	int *sleeptime = (int*)malloc(8 * sizeof(int));
 	for (i = 0; i < totol; i++) {
 		sleeptime[i] = (i + 1) * 1000;
 		cid = dyco_coroutine_create(worker, sleeptime + i);
-		assert(dyco_waitgroup_add(wg, cid) == 1);
+		ret = dyco_waitgroup_add(wg, cid);
+		assert(ret == 1);
 	}
 	
 	printf("[boss] I am coro %d. I'm about wait all workers\n", dyco_coroutine_coroID());
-	int ret = dyco_waitgroup_wait(wg, -1, -1);
+	ret = dyco_waitgroup_wait(wg, -1, -1);
 	printf("[boss] I am coro %d. I have finish waiting and ret = %d\n", dyco_coroutine_coroID(), ret);
 	
 	// printf("[boss] I am coro %d. I'm about wait all workers\n", dyco_coroutine_coroID());

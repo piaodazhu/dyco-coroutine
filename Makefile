@@ -22,9 +22,6 @@ all : $(SUB_DIR) $(BIN)
 $(SUB_DIR) : ECHO
 	make -C $@
 
-#DEBUG : ECHO
-#	make -C bin
-
 ECHO :
 	@echo $(SUB_DIR)
 

@@ -49,7 +49,6 @@ _htable_create(int width)
 static int
 _htable_init(dyco_htable *ht, int width)
 {
-	// _htable_clear(ht);
 	if (width <= 0)
 		ht->_width = DYCO_HTABLE_DEFAULTWITDH;
 	else {
@@ -107,10 +106,8 @@ _htable_clear_with_freecb(dyco_htable *ht, void (*freecb)(void*))
 		if (ht->_table[i].id == -1) {
 			continue;
 		}
-		printf("tag20\n");
 		freecb(ht->_table[i].data);
 		pre = ht->_table[i].next;
-		printf("tag21\n");
 		while (pre != NULL) {
 			ptr = pre->next;
 			freecb(pre->data);

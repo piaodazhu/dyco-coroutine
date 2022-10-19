@@ -10,8 +10,11 @@ _sched_key_destructor(void *data) {
 
 static void 
 _sched_key_creator(void) {
-	assert(pthread_key_create(&global_sched_key, _sched_key_destructor) == 0);
-	assert(pthread_setspecific(global_sched_key, NULL) == 0);
+	int ret;
+	ret = pthread_key_create(&global_sched_key, _sched_key_destructor);
+	assert(ret == 0);
+	ret = pthread_setspecific(global_sched_key, NULL);
+	assert(ret == 0);
 	return;
 }
 
@@ -49,12 +52,13 @@ _save_stack(dyco_coroutine *co) {
 
 	char* top = co->sched->stack + co->sched->stack_size;
 	char dummy = 0;
-	assert(top - &dummy <= DYCO_MAX_STACKSIZE);
-	if (co->stack_size < top - &dummy) {
-		co->stack = realloc(co->stack, top - &dummy);
+	int cursize = top - &dummy;
+	assert(cursize <= DYCO_MAX_STACKSIZE);
+	if (co->stack_size < cursize) {
+		co->stack = realloc(co->stack, cursize);
 		assert(co->stack != NULL);
 	}
-	co->stack_size = top - &dummy;
+	co->stack_size = cursize;
 	memcpy(co->stack, &dummy, co->stack_size);
 	return;
 }
@@ -74,9 +78,7 @@ _yield(dyco_coroutine *co) {
 		_save_stack(co);
 	}
 	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
-	// printf("tag31\n");
 	swapcontext(&co->ctx, &co->sched->ctx);
-	// printf("tag32\n");
 	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
 }
 
@@ -89,15 +91,12 @@ _resume(dyco_coroutine *co) {
 		_load_stack(co);
 	}
 
-	printf("-- resume coro %d --\n", co->cid);
 	dyco_schedule *sched = co->sched;
 	++co->sched_count;
 	
 	sched->curr_thread = co;
-	// SETBIT(co->status, COROUTINE_STATUS_RUNNING);
 	swapcontext(&sched->ctx, &co->ctx);
 	while (TESTBIT(co->status, COROUTINE_STATUS_SCHEDCALL)) {
-		// printf("schedcall\n");
 		if (_schedule_callexec(sched)) {
 			printf("return to coro ctx\n");
 			swapcontext(&sched->ctx, &co->ctx);
@@ -105,19 +104,12 @@ _resume(dyco_coroutine *co) {
 			return 1;
 		}
 	}
-	// CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
 	sched->curr_thread = NULL;
-	// printf("back\n");
-	// struct epoll_event ev;
-	// int ret = epoll_wait_f(sched->epollfd, &ev, 1, -1);
-	// printf("ret = %d\n", ret);
-	
 
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED)) {
 		printf("** finish coro %d **\n", co->cid);
 		_schedule_cancel_sleep(co);
 		dyco_coroutine_free(co);
-		// printf("[i] %d coros remain, ht 1: %d, ht2: %d, rbt: %d\n", sched->coro_count, HTABLE_EMPTY(&sched->cid_co_map), HTABLE_EMPTY(&sched->fd_co_map), RB_EMPTY(&sched->sleeping));
 		return -1;
 	}
 	return 0;
@@ -165,7 +157,8 @@ _wait_events(int fd, unsigned int events, int timeout)
 int 
 dyco_coroutine_create(proc_coroutine func, void *arg) {
 
-	assert(pthread_once(&sched_key_once, _sched_key_creator) == 0);
+	int ret = pthread_once(&sched_key_once, _sched_key_creator);
+	assert(ret == 0);
 	dyco_schedule *sched = _get_sched();
 
 	if (sched == NULL) {
@@ -198,7 +191,8 @@ dyco_coroutine_create(proc_coroutine func, void *arg) {
 
 	if (sched->_cid_gen == INT_MAX) sched->_cid_gen = 0;
 	co->cid = sched->_cid_gen++;
-	assert(_htable_insert(&sched->cid_co_map, co->cid, co) >= 0);
+	ret = _htable_insert(&sched->cid_co_map, co->cid, co);
+	assert(ret >= 0);
 
 	co->udata = NULL;
 

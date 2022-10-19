@@ -19,7 +19,7 @@ void corofun(void *arg)
 
 int main()
 {
-	int i, cid;
+	int i, cid, ret;
 	int sleeptime = 1000;
 	char stack[3][4096];
 	// char* stack[3];
@@ -32,7 +32,8 @@ int main()
 	}
 	for (i = 0; i < 3; i++) {
 		cid = dyco_coroutine_create(corofun, &sleeptime);
-		assert(dyco_coroutine_setStack(cid, stack[i], 4096) == 1);
+		ret = dyco_coroutine_setStack(cid, stack[i], 4096);
+		assert(ret == 1);
 	}
 	printf("[+] scheduler start running.\n");
 	dyco_schedule_run();

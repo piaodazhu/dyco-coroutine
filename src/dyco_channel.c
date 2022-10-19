@@ -42,11 +42,9 @@ _hdc_wait(dyco_channel* chan, int fd, int timeout)
 	int ret;
     	ret = eventfd_read(fd, &count);
 	if (ret == 0) {
-		// printf("get notify\n");
 		return (half_duplex_channel_status)(count);
 	}	
 	else {
-		// printf("get wrong notify\n");
 		return HDC_STATUS_NOP;
 	}
 		
@@ -113,7 +111,6 @@ dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeou
 	if ((__chan == NULL) || (__size > __chan->maxsize) || (__size == 0)) 
 		return -2;
 	
-	// printf("<dyco_channel_send> channel status = %d\n", __chan->status);
 	int ret = -2;
 	switch (__chan->status) {
 		case HDC_STATUS_EMPTY:
@@ -137,7 +134,7 @@ dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeou
 					ret = __size;
 					break;
 				case HDC_STATUS_FULL:
-					abort();
+					ABORT();
 					break;
 				case HDC_STATUS_WANTREAD:
 					__chan->msglen = __size;
@@ -173,14 +170,11 @@ dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeou
 			break;
 
 		case HDC_STATUS_WANTCLOSE:
-			// __chan->status = HDC_STATUS_CANCLOSE;
-			// _hdc_notify(__chan, __chan->r_notifyfd);
 			ret = -1;
 			break;
 
 		default: break;
 	}
-	// printf("<dyco_channel_send> ret channel status = %d\n", __chan->status);
 	return ret;
 }
 
@@ -190,7 +184,7 @@ dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __tim
 {
 	if ((__chan == NULL) || (__maxsize < __chan->maxsize))
 		return -2;
-	// printf("<dyco_channel_recv> channel status = %d\n", __chan->status);
+
 	int ret = -2;
 	switch (__chan->status) {
 		case HDC_STATUS_EMPTY:
@@ -200,7 +194,7 @@ dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __tim
 
 			switch(__chan->status) {
 				case HDC_STATUS_EMPTY:
-					abort();
+					ABORT();
 					break;
 				case HDC_STATUS_FULL:
 					ret = __chan->msglen;
@@ -245,14 +239,11 @@ dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __tim
 			break;
 
 		case HDC_STATUS_WANTCLOSE:
-			// __chan->status = HDC_STATUS_CANCLOSE;
-			// _hdc_notify(__chan, __chan->w_notifyfd);
 			ret = -1;
 			break;
 
 		default: break;
 	}
-	// printf("<dyco_channel_recv> ret channel status = %d\n", __chan->status);
 	return ret;
 }
 
