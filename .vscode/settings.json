@@ -15,6 +15,7 @@
 		"socket.h": "c",
 		"stdio.h": "c",
 		"stdlib.h": "c",
-		"inttypes.h": "c"
+		"inttypes.h": "c",
+		"inet.h": "c"
 	}
 }

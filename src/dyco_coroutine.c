@@ -98,7 +98,6 @@ _resume(dyco_coroutine *co) {
 	swapcontext(&sched->ctx, &co->ctx);
 	while (TESTBIT(co->status, COROUTINE_STATUS_SCHEDCALL)) {
 		if (_schedule_callexec(sched)) {
-			printf("return to coro ctx\n");
 			swapcontext(&sched->ctx, &co->ctx);
 		} else {
 			return 1;
@@ -107,7 +106,6 @@ _resume(dyco_coroutine *co) {
 	sched->curr_thread = NULL;
 
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED)) {
-		printf("** finish coro %d **\n", co->cid);
 		_schedule_cancel_sleep(co);
 		dyco_coroutine_free(co);
 		return -1;
@@ -222,8 +220,6 @@ dyco_coroutine_free(dyco_coroutine *co) {
 		close(co->epollfd);
 	}
 	if (TESTBIT(co->status, COROUTINE_FLAGS_WAITSIGNAL)) {
-		// _schedule_cancel_wait(co, co->sigfd);
-		// epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, co->sigfd, NULL);
 		sigprocmask(SIG_SETMASK, &co->old_sigmask, NULL);
 		close(co->sigfd);
 	}
