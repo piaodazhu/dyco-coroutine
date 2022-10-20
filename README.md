@@ -5,7 +5,7 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/piaodazhu/dyco-coroutine)
 ![GitHub top language](https://img.shields.io/github/languages/top/piaodazhu/dyco-coroutine)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/piaodazhu/dyco-coroutine)
-![GitHub tag checks state](https://img.shields.io/github/checks-status/piaodazhu/dyco-coroutine/1.0.0)
+![GitHub tag checks state](https://img.shields.io/github/checks-status/piaodazhu/dyco-coroutine/v1.0.0)
 
 ☄️ **dyco-coroutine** is a dynamic coroutine framework for C. I hope this framework to be TRULY **practical** and **user-friendly**, rather than just a coroutine demo. This framework was first inspired by the `wangbojing/NtyCo` project. Some other projects are also referred, such as `cloudwu/coroutine`, `jamwt/libtask` and `stevedekorte/coroutine`.
 
