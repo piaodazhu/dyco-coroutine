@@ -30,7 +30,7 @@ There are still some future works:
 3. Discover more feature requests and bugs by getting more people to use them.
 4. Performance optimization. Using ucontext predestines the framework to not be the best at switching performance. But there is still room for optimization.
 
-You can give me a 🌟, or recommend it to others if you found dyco-coroutine helpful. And feel free to open issues or pull requests to make this project better. 🫶
+You can give me a 🌟, or recommend it to others if you found dyco-coroutine helpful. And feel free to open issues or pull requests to make this project better. 🌈
 
 # Build
 
@@ -148,7 +148,7 @@ int main()
 
 Some basic coroutine methods are defined here. `sleep/wait/coroID` can only be called inside coroutine functions.
 
-`setStack` is **optional**. If the stack is not set before the coroutine runs. All coroutines whose stack is not set will share the stack of the scheduler. It saves memory space, but costs time for copying stacks when these coroutines yield. Thus, if a coroutine need frequently yield, it's better to set a stack for it.
+`setStack` is **optional**. If the stack is not set before the coroutine runs. All coroutines whose stack is not set will share the stack of the scheduler. It saves memory space, but costs time for copying stacks when these coroutines yield. Thus, if a coroutine need frequently yield, it's better to set a stack for it. See more in `example/*`.
 
 ```c
 // return the coroutine ID on success, < 0 on error
@@ -181,7 +181,7 @@ int dyco_coroutine_getSchedCount(int cid);
 
 ## Scheduler
 
-Some basic scheduler methods are defined here. In face, scheduling coroutines is automated in dyco. `create` is **optional**. `run` is enough in most cases.
+Some basic scheduler methods are defined here. In face, scheduling coroutines is automated in dyco. `create` is **optional**. `run` is enough in most cases. See more in `example/*`.
 
 ```c
 // return 0 when done, 1 when stopped, < 0 on error
@@ -207,7 +207,7 @@ int dyco_schedule_getCoroCount();
 
 ## Scheduler Call
 
-Scheduler call provides interfaces for coroutines to influence the behavior of its scheduler, such as globally block some signals, stop or abort the scheduler.
+Scheduler call provides interfaces for coroutines to influence the behavior of its scheduler, such as globally block some signals, stop or abort the scheduler. See more in `example/stop_abort.c`.
 
 ```c
 // see sigprocmask
@@ -220,7 +220,7 @@ void dyco_schedcall_abort();
 
 ## epoll
 
-Although programers use coroutine to achieve asynchronous I/O performance by programming in a synchronous manner, the traditional I/O multiplexing manner is also supported by dyco. If `COROUTINE_HOOK` is enabled, call `epoll_wait` will not block the scheduling loop. `dyco_epoll_xxx` APIs is also provided for convenience.
+Although programers use coroutine to achieve asynchronous I/O performance by programming in a synchronous manner, the traditional I/O multiplexing manner is also supported by dyco. If `COROUTINE_HOOK` is enabled, call `epoll_wait` will not block the scheduling loop. `dyco_epoll_xxx` APIs is also provided for convenience. See more in `example/epoll.c`.
 
 ```c
 // return 0 on success
@@ -243,6 +243,8 @@ By calling `dyco_signal` APIs, wait signals will not block the scheduling loop. 
 
 Note that the signals set by calling `signal_init` will be **blocked** until `signal_destroy` is called.
 
+See more in `example/signal.c`.
+
 ```c
 // return pid of the child on success, < 0 on error
 int dyco_signal_waitchild(const pid_t child, int *status, int timeout);
@@ -257,7 +259,7 @@ int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout);
 
 ## Half Duplex Channel
 
-Half duplex channel is provided for **simple** communications between coroutines. `send` will return only if the channel is empty or the message is received by receiver.
+Half duplex channel is provided for **simple** communications between coroutines. `send` will return only if the channel is empty or the message is received by receiver. See more in `example/channel.c`.
 
 ```c
 // size: max length of the message
@@ -274,7 +276,7 @@ ssize_t dyco_channel_recv(dyco_channel *chan, void *buf, size_t maxsize, int tim
 
 ## Publish-subscribe Channel
 
-Pub-Sub channel is provided for **1-to-N** communications. `publish` won't success if there is no subscriber. For each new message, `subscribe` should be called by subscribers, that is, subscribe will not continue automatically. 
+Pub-Sub channel is provided for **1-to-N** communications. `publish` won't success if there is no subscriber. For each new message, `subscribe` should be called by subscribers, that is, subscribe will not continue automatically. See more in `example/pubsub.c`.
 
 ```c
 // size: max length of the message
@@ -291,7 +293,7 @@ ssize_t dyco_pubsub_subscribe(dyco_pubsubchannel *pschan, void *buf, size_t maxs
 
 ## Waitgroup
 
-Waitgroup is provided for **N-to-N** synchronization. Coroutines can join a waitgroup by calling `add`, notify the waitgroup by calling `done`, and wait all or a certain number of other coroutines by calling `wait`.
+Waitgroup is provided for **N-to-N** synchronization. Coroutines can join a waitgroup by calling `add`, notify the waitgroup by calling `done`, and wait all or a certain number of other coroutines by calling `wait`. See more in `example/waitgroup.c`.
 
 ```c
 // suggest_size: estimated max number of coroutines on the waitgroup
@@ -313,7 +315,7 @@ int dyco_waitgroup_wait(dyco_waitgroup* group, int target, int timeout);
 
 ## Semaphore
 
-Strictly speaking, each dyco scheduler runs a single thread, where at most one coroutine is running at any time. But these coroutines may ACT LIKE running at the same time. Therefore, semaphore may be helpful in some cases, for example, when we need control the number of active connections.
+Strictly speaking, each dyco scheduler runs a single thread, where at most one coroutine is running at any time. But these coroutines may ACT LIKE running at the same time. Therefore, semaphore may be helpful in some cases, for example, when we need control the number of active connections. See more in `example/semaphore.c`.
 
 ```c
 // value: initial value of the semaphore
@@ -330,7 +332,7 @@ int dyco_semaphore_signal(dyco_semaphore *sem);
 ## Socket
 
 dyco socket API can be called the same as socket API, while they will not block the scheduling loop. 
-If `COROUTINE_HOOK` is defined, normal socket API will act like dyco socket API. Besides, it will change the behavior of other high level network APIs who call normal socket API in its process, such as database client APIs and DNS APIs.
+If `COROUTINE_HOOK` is defined, normal socket API will act like dyco socket API. Besides, it will change the behavior of other high level network APIs who call normal socket API in its process, such as database client APIs and DNS APIs. See more in `example/socket_client.c example/socket_server.c example/network.c`.
 
 ```c
 int dyco_socket(int domain, int type, int protocol);
@@ -347,7 +349,7 @@ ssize_t dyco_recvfrom(int fd, void *buf, size_t len, int flags,
 
 ## SSL
 
-dyco SSL API is provided to bring great performance gains to SSL communication. But `libssl` and `libcrypto` must be installed before building dyco-coroutine if anyone want to call SSL API. 
+dyco SSL API is provided to bring great performance gains to SSL communication. But `libssl` and `libcrypto` must be installed before building dyco-coroutine if anyone want to call SSL API. See more in `example/ssl_server.c example/ssl_client`.
 
 **Lack of SSL part is also OK**, the main part of dyco can be built without any dependencies.
 
