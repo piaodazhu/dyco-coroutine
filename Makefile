@@ -1,4 +1,3 @@
-
 CC = gcc
 ECHO = echo
 
@@ -11,23 +10,16 @@ BIN = socket_server_example socket_client_example epoll_example sleep_example se
 FLAG = -lpthread -O3 -ldl -I $(ROOT_DIR)/src
 SSLFLAG = -lssl -lcrypto -D DYCO_SSL_OK
 
-HASSSL := $(shell ldconfig -p | grep libssl)
-HASCRYPTO := $(shell ldconfig -p | grep libcrypto)
-HASRDS := $(shell ldconfig -p | grep libhiredis)
+HASSSL := $(shell if [ -d /usr/local/include/openssl ] || [ -d /usr/include/openssl ]; then echo 1; fi)
+HASRDS := $(shell if [ -d /usr/local/include/hiredis ] || [ -d /usr/include/hiredis ]; then echo 1; fi)
 
 ifdef HASRDS
-	BIN += network_example 
-	FLAG += $(SSLFLAG)
-else
-	@echo "[Warning] libhiredis not found. redis cli example wont be build."
+	BIN += network_example
 endif
 
 ifdef HASSSL
-ifdef HASCRYPTO
-	BIN += ssl_server_example ssl_client_example 
-else
-	@echo "[Warning] libssl or libcrypto not found."
-endif
+	BIN += ssl_server_example ssl_client_example
+	FLAG += $(SSLFLAG)
 endif
 
 CUR_SOURCE = ${wildcard *.c}
@@ -35,9 +27,11 @@ CUR_OBJS = ${patsubst %.c, %.o, %(CUR_SOURCE)}
 
 export CC BIN_DIR OBJS_DIR ROOT_DIR FLAG BIN ECHO
 
-all : $(SUB_DIR) $(BIN)
+all : PREPARE $(SUB_DIR) $(BIN)
 .PHONY : all
 
+PREPARE:
+	mkdir -p $(OBJS_DIR) $(BIN_DIR)
 
 $(SUB_DIR) : ECHO
 	make -C $@

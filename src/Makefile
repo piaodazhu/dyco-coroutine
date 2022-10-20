@@ -1,5 +1,3 @@
-
-
 CUR_SOURCE = ${wildcard *.c}
 
 CUR_OBJS = ${patsubst %.c, %.o, $(CUR_SOURCE)}
