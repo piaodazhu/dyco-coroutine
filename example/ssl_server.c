@@ -297,6 +297,7 @@ void foo(void*arg) {
 	while (1) {
 		dyco_coroutine_sleep(400);
 		putchar('.');
+		fflush(stdout);		
 	}
 	return;	
 }

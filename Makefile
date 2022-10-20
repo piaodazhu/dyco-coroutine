@@ -7,15 +7,33 @@ ROOT_DIR = $(shell pwd)
 OBJS_DIR = $(ROOT_DIR)/objs
 BIN_DIR = $(ROOT_DIR)/bin
 
-BIN = socket_server_example socket_client_example ssl_server_example ssl_client_example epoll_example sleep_example setstack_example signal_example stop_abort_example channel_example waitgroup_example pubsub_example semaphore_example network_example multithread_example
-FLAG = -lpthread -O3 -ldl -I $(ROOT_DIR)/src -I /usr/local/include/hiredis/
-SSLFLAG = -lssl -lcrypto
-RDSFLAG = -lhiredis
+BIN = socket_server_example socket_client_example epoll_example sleep_example setstack_example signal_example stop_abort_example channel_example waitgroup_example pubsub_example semaphore_example multithread_example
+FLAG = -lpthread -O3 -ldl -I $(ROOT_DIR)/src
+SSLFLAG = -lssl -lcrypto -D DYCO_SSL_OK
+
+HASSSL := $(shell ldconfig -p | grep libssl)
+HASCRYPTO := $(shell ldconfig -p | grep libcrypto)
+HASRDS := $(shell ldconfig -p | grep libhiredis)
+
+ifdef HASRDS
+	BIN += network_example 
+	FLAG += $(SSLFLAG)
+else
+	@echo "[Warning] libhiredis not found. redis cli example wont be build."
+endif
+
+ifdef HASSSL
+ifdef HASCRYPTO
+	BIN += ssl_server_example ssl_client_example 
+else
+	@echo "[Warning] libssl or libcrypto not found."
+endif
+endif
 
 CUR_SOURCE = ${wildcard *.c}
 CUR_OBJS = ${patsubst %.c, %.o, %(CUR_SOURCE)}
 
-export CC BIN_DIR OBJS_DIR ROOT_IDR FLAG BIN ECHO EFLAG
+export CC BIN_DIR OBJS_DIR ROOT_DIR FLAG BIN ECHO
 
 all : $(SUB_DIR) $(BIN)
 .PHONY : all
@@ -62,16 +80,16 @@ semaphore_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
 
 network_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/network.o
-	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) $(RDSFLAG)
+	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) -lhiredis
 
 ssl_server_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/dyco_ssl.o $(OBJS_DIR)/ssl_server.o
-	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) $(SSLFLAG)
+	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
 
 ssl_client_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/dyco_ssl.o $(OBJS_DIR)/ssl_client.o
-	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) $(SSLFLAG)
+	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
 
 multithread_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/multithread.o
-	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) 
+	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
 
 clean :
 	rm -rf $(BIN_DIR)/* $(OBJS_DIR)/*

@@ -18,6 +18,8 @@ Features of dyco-coroutine:
 9. Scheduler and be stopped by any coroutine, and continue running in main process.
 10. Multi-thread supported.
 
+![DYCOARCH](./img/arch.png)
+
 There are still some future works:
 1. Support different platforms. This part can be referred to `jamwt/libtask`.
 2. Make dyco-coroutine a shared library: **libdyco**. Then programers can use it by simply link this lib when compiling.

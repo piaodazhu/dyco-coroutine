@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -32,12 +33,12 @@
 #include "dyco_htable.h"
 
 // ------ 2. User Configurations
-#define COROUTINE_HOOK
-#define	DYCO_SSL_ENABLE
-#define DYCO_MAX_EVENTS			256
-#define DYCO_MAX_STACKSIZE		(64 * 1024)
-#define DYCO_DEFAULT_TIMEOUT		3000000
-#define DYCO_DEFAULT_CHANNELSIZE	256
+#define		COROUTINE_HOOK
+#define		DYCO_SSL_ENABLE
+#define		DYCO_MAX_EVENTS			256
+#define		DYCO_MAX_STACKSIZE		(64 * 1024)
+#define		DYCO_DEFAULT_TIMEOUT		3000000
+#define		DYCO_DEFAULT_CHANNELSIZE	256
 
 // ------ 3. Data Structure Defination
 // 3.1 scheduler
@@ -366,6 +367,7 @@ ssize_t dyco_recvfrom(int fd, void *buf, size_t len, int flags,
 		      struct sockaddr *src_addr, socklen_t *addrlen);
 
 // 6.11 ssl
+#ifdef DYCO_SSL_OK
 #ifdef DYCO_SSL_ENABLE
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -373,6 +375,7 @@ int dyco_SSL_accept(SSL *ssl);
 int dyco_SSL_connect(SSL *ssl);
 int dyco_SSL_read(SSL *ssl, void *buf, int num);
 int dyco_SSL_write(SSL *ssl, const void *buf, int num);
+#endif
 #endif
 
 // ------ 7. Hook Functions

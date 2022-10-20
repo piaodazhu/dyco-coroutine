@@ -1,6 +1,8 @@
 #ifndef DYCO_SSL_H
 #define DYCO_SSL_H
 #include "dyco_coroutine.h"
+
+#ifdef DYCO_SSL_OK
 #ifdef DYCO_SSL_ENABLE
 
 #define SSL_TIMEOUT_DEFAULT	1000
@@ -104,4 +106,6 @@ label:
 }
 
 #endif
+#endif
+
 #endif
