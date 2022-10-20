@@ -24,7 +24,7 @@ dyco_epoll_init()
 	co->epollfd = epoll_create(1024);
 	SETBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING);
 
-	return co->epollfd;
+	return 0;
 } 
 
 int

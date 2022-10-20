@@ -274,6 +274,7 @@ static void _init_coro(dyco_coroutine *co);
 int _resume(dyco_coroutine *co);
 void _yield(dyco_coroutine *co);
 int _wait_events(int fd, unsigned int events, int timeout);
+void dyco_coroutine_free(dyco_coroutine *co);
 
 // 5.2 scheduler
 void _schedule_sched_sleep(dyco_coroutine *co, int msecs);
@@ -287,7 +288,6 @@ void _schedule_abort(dyco_schedule *__sched);
 // ------ 6. User APIs
 // 6.1 coroutine
 int dyco_coroutine_create(proc_coroutine func, void *arg);
-void dyco_coroutine_free(dyco_coroutine *co);
 void dyco_coroutine_sleep(uint32_t msecs);
 int dyco_coroutine_waitRead(int fd, int timeout);
 int dyco_coroutine_waitWrite(int fd, int timeout);

@@ -62,7 +62,7 @@ int dyco_signal_init(sigset_t *mask)
 	co->sigfd = sigfd;
 	SETBIT(co->status, COROUTINE_FLAGS_WAITSIGNAL);
 
-	return sigfd;
+	return 0;
 }
 
 

@@ -2,6 +2,11 @@
 
 # dyco-coroutine
 
+![GitHub last commit](https://img.shields.io/github/last-commit/piaodazhu/dyco-coroutine)
+![GitHub top language](https://img.shields.io/github/languages/top/piaodazhu/dyco-coroutine)
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/piaodazhu/dyco-coroutine)
+![GitHub tag checks state](https://img.shields.io/github/checks-status/piaodazhu/dyco-coroutine/1.0.0)
+
 ☄️ **dyco-coroutine** is a dynamic coroutine framework for C. I hope this framework to be TRULY **practical** and **user-friendly**, rather than just a coroutine demo. This framework was first inspired by the `wangbojing/NtyCo` project. Some other projects are also referred, such as `cloudwu/coroutine`, `jamwt/libtask` and `stevedekorte/coroutine`.
 
 With this framework, programers can achieve asynchronous I/O performance by programming in a synchronous manner. And I want this framework to work out-of-the-box: you just create a coroutine to run your functions, and I'll provide all tools that you need (such as scheduler, socket and synchronization), then all the functions run as coroutines do. Besides, I provide detailed examples that covers almost all supported features of dyco. Anyone can get started within 5 minite by reviewing and running this examples.
@@ -100,8 +105,15 @@ void foobar(void *arg)
 	// Wait child for 3000 ms. Set timeout to -1 to wait until child process is finished
 	ret = dyco_signal_waitchild(ret, &status, 3000);
 	
-	// Use dyco_coroutine_sleep() instead of epoll_wait()
+	// Use dyco_epoll api if COROUTINE_HOOK is not defined
+	dyco_epoll_create(...)
+	dyco_epoll_add(...)
 	dyco_epoll_wait(...)
+	dyco_epoll_del(...)
+	dyco_epoll_destroy(...)
+
+	// Use normal epoll api if COROUTINE_HOOK is defined
+	epoll_wait(...)
 	
 	return;
 }
@@ -135,101 +147,192 @@ int main()
 
 ## Coroutine
 
-Some basic coroutine method is defined. 
+Some basic coroutine methods are defined here. `sleep/wait/coroID` can only be called inside coroutine functions.
+
+`setStack` is **optional**. If the stack is not set before the coroutine runs. All coroutines whose stack is not set will share the stack of the scheduler. It saves memory space, but costs time for copying stacks when these coroutines yield. Thus, if a coroutine need frequently yield, it's better to set a stack for it.
+
 ```c
+// return the coroutine ID on success, < 0 on error
 int dyco_coroutine_create(proc_coroutine func, void *arg);
-void dyco_coroutine_free(dyco_coroutine *co);
+
 void dyco_coroutine_sleep(uint32_t msecs);
+
+// set timeout to -1 for persistent waiting. set timeout to 0 for no waiting
+// return > 0 on success, 0 on timeout, < 0 on error
 int dyco_coroutine_waitRead(int fd, int timeout);
 int dyco_coroutine_waitWrite(int fd, int timeout);
 int dyco_coroutine_waitRW(int fd, int timeout);
 
+// return ID of current coroutine
 int dyco_coroutine_coroID();
+
+// set stackptr to NULL or set stacksize to 0 to cancel independent stack
+// return 1 on successfully set, 0 on successfully cancel, < 0 on error
 int dyco_coroutine_setStack(int cid, void *stackptr, size_t stacksize);
+
 int dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize);
+
+// return 0 on success
 int dyco_coroutine_setUdata(int cid, void *udata);
 int dyco_coroutine_getUdata(int cid, void **udata);
+
+// return total yield times of a coroutine 
 int dyco_coroutine_getSchedCount(int cid);
 ```
 
 ## Scheduler
 
-```c
-int dyco_schedule_run();
-int  dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout);
-void  dyco_schedule_free(dyco_schedule *sched);
+Some basic scheduler methods are defined here. In face, scheduling coroutines is automated in dyco. `create` is **optional**. `run` is enough in most cases.
 
+```c
+// return 0 when done, 1 when stopped, < 0 on error
+int dyco_schedule_run();
+
+// stack_size: shared stack memory size
+// loopwait_timeout: max delay (ms) of starting new coroutine
+// return 0 on success
+int dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout);
+
+void dyco_schedule_free(dyco_schedule *sched);
+
+// return ID of current scheduler
 int dyco_schedule_schedID();
+
 int dyco_schedule_setUdata(void *udata);
+
 int dyco_schedule_getUdata(void **udata);
+
+// return total number to coroutines of current scheduler
 int dyco_schedule_getCoroCount();
 ```
 
 ## Scheduler Call
 
+Scheduler call provides interfaces for coroutines to influence the behavior of its scheduler, such as globally block some signals, stop or abort the scheduler.
+
 ```c
+// see sigprocmask
 int dyco_schedcall_sigprocmask(int __how, sigset_t *__set, sigset_t *__oset);
+// stop current scheduler and make it return as soon as possible
 void dyco_schedcall_stop();
+// shutdown the scheduler and kill its all coroutines
 void dyco_schedcall_abort();
 ```
 
 ## epoll
+
+Although programers use coroutine to achieve asynchronous I/O performance by programming in a synchronous manner, the traditional I/O multiplexing manner is also supported by dyco. If `COROUTINE_HOOK` is enabled, call `epoll_wait` will not block the scheduling loop. `dyco_epoll_xxx` APIs is also provided for convenience.
+
 ```c
+// return 0 on success
 int dyco_epoll_init();
 void dyco_epoll_destroy();
 int dyco_epoll_add(int fd, struct epoll_event *ev);
 int dyco_epoll_del(int fd, struct epoll_event *ev);
+
+// return number of ready events, < 0 on error
 int dyco_epoll_wait(struct epoll_event *events, int maxevents, int timeout);
+
+// see epoll_wait
 int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
 ```
 
 
 ## Signal
 
+By calling `dyco_signal` APIs, wait signals will not block the scheduling loop. `waitchild + fork + exec` is helpful in some cases. Other signal is also supported. 
+
+Note that the signals set by calling `signal_init` will be **blocked** until `signal_destroy` is called.
+
 ```c
+// return pid of the child on success, < 0 on error
 int dyco_signal_waitchild(const pid_t child, int *status, int timeout);
+// return 0 on success
 int dyco_signal_init(sigset_t *mask);
+
 void dyco_signal_destroy();
+
+// return sizeof struct signalfd_siginfo on success, < 0 on error
 int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout);
 ```
 
-
 ## Half Duplex Channel
 
+Half duplex channel is provided for **simple** communications between coroutines. `send` will return only if the channel is empty or the message is received by receiver.
+
 ```c
+// size: max length of the message
 dyco_channel* dyco_channel_create(size_t size);
+
 void dyco_channel_destroy(dyco_channel **chan);
+
+// return the actual sent length, 0 on channel closed, < 0 on error
 ssize_t dyco_channel_send(dyco_channel *chan, void *buf, size_t size, int timeout);
+
+// return the actual received length, 0 on channel closed, < 0 on error
 ssize_t dyco_channel_recv(dyco_channel *chan, void *buf, size_t maxsize, int timeout);
 ```
 
-
 ## Publish-subscribe Channel
+
+Pub-Sub channel is provided for **1-to-N** communications. `publish` won't success if there is no subscriber. For each new message, `subscribe` should be called by subscribers, that is, subscribe will not continue automatically. 
+
 ```c
+// size: max length of the message
 dyco_pubsubchannel* dyco_pubsub_create(size_t size);
+
 void dyco_pubsub_destroy(dyco_pubsubchannel **pschan);
+
+// return the actual published length, 0 on no subscriber, < 0 on error
 ssize_t dyco_pubsub_publish(dyco_pubsubchannel *pschan, void *buf, size_t size);
+
+// return the actual received length, < 0 on error
 ssize_t dyco_pubsub_subscribe(dyco_pubsubchannel *pschan, void *buf, size_t maxsize, int timeout);
 ```
 
 ## Waitgroup
+
+Waitgroup is provided for **N-to-N** synchronization. Coroutines can join a waitgroup by calling `add`, notify the waitgroup by calling `done`, and wait all or a certain number of other coroutines by calling `wait`.
+
 ```c
+// suggest_size: estimated max number of coroutines on the waitgroup
 dyco_waitgroup* dyco_waitgroup_create(int suggest_size);
+
 void dyco_waitgroup_destroy(dyco_waitgroup **group);
+
+// add coroutine to the waitgroup
 int dyco_waitgroup_add(dyco_waitgroup* group, int cid);
+
+// tell the waitgroup this coroutine is done
 int dyco_waitgroup_done(dyco_waitgroup* group);
+
+// target: target wait number, set it to -1 to wait until all group member done
+// timeout: unit is ms, and set to -1 for persistent waiting
+// return > 0 on success, < 0 on error
 int dyco_waitgroup_wait(dyco_waitgroup* group, int target, int timeout);
 ```
 
 ## Semaphore
+
+Strictly speaking, each dyco scheduler runs a single thread, where at most one coroutine is running at any time. But these coroutines may ACT LIKE running at the same time. Therefore, semaphore may be helpful in some cases, for example, when we need control the number of active connections.
+
 ```c
+// value: initial value of the semaphore
 dyco_semaphore* dyco_semaphore_create(size_t value);
 void dyco_semaphore_destroy(dyco_semaphore **sem);
+
+// return 0 on success, < 0 on error or timeout
 int dyco_semaphore_wait(dyco_semaphore *sem, int timeout);
+
+// return 0 on success, < 0 on error
 int dyco_semaphore_signal(dyco_semaphore *sem);
 ```
 
 ## Socket
+
+dyco socket API can be called the same as socket API, while they will not block the scheduling loop. 
+If `COROUTINE_HOOK` is defined, normal socket API will act like dyco socket API. Besides, it will change the behavior of other high level network APIs who call normal socket API in its process, such as database client APIs and DNS APIs.
+
 ```c
 int dyco_socket(int domain, int type, int protocol);
 int dyco_close(int fd);
@@ -244,10 +347,22 @@ ssize_t dyco_recvfrom(int fd, void *buf, size_t len, int flags,
 ```
 
 ## SSL
+
+dyco SSL API is provided to bring great performance gains to SSL communication. But `libssl` and `libcrypto` must be installed before building dyco-coroutine if anyone want to call SSL API. 
+
+**Lack of SSL part is also OK**, the main part of dyco can be built without any dependencies.
+
 ```c
+// return 1 on success, else on error
 int dyco_SSL_accept(SSL *ssl);
+
+// return 1 on success, else on error
 int dyco_SSL_connect(SSL *ssl);
+
+// see SSL_read
 int dyco_SSL_read(SSL *ssl, void *buf, int num);
+
+// see SSL_write
 int dyco_SSL_write(SSL *ssl, const void *buf, int num);
 ```
 
