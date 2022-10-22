@@ -8,48 +8,48 @@
 
 > Language: [English](./README.md) | [中文](./README_ZH.md)
 
-☄️ **dyco-coroutine** is a dynamic coroutine framework for C. I hope this framework to be TRULY **practical** and **user-friendly**, rather than just a coroutine demo. This framework was first inspired by the `wangbojing/NtyCo` project. Some other projects are also referred, such as `cloudwu/coroutine`, `jamwt/libtask` and `stevedekorte/coroutine`.
+☄️ **dyco-coroutine** 是一个纯C的动态协程框架。作者希望这个框架是真正**实用**且**好用**，而不仅仅是一个Demo。这个项目最早受到`wangbojing/NtyCo`启发。也参考了一些别的项目，比如`cloudwu/coroutine`, `jamwt/libtask` 和 `stevedekorte/coroutine`。
 
-With this framework, programers can achieve asynchronous I/O performance by programming in a synchronous manner. And I want this framework to work out-of-the-box: you just create a coroutine to run your functions, and I'll provide all tools that you need (such as scheduler, socket and synchronization), then all the functions run as coroutines do. Besides, I provide detailed examples that covers almost all supported features of dyco. Anyone can get started within 5 minite by reviewing and running this examples.
+使用这个框架，开发人员可以用同步的编程方式达到接近异步程序的I/O性能。作者希望这个框架是开箱即用的：没有过多的依赖和环境限制，使用的时候直接将子程序创建为协程即可，协程相关的所有工具（如调度器，套接字接口，协程同步）都由框架提供，所有子程序就会自动按照协程的方式运行。此外，作者提供了详细的示例，覆盖了dyco目前几乎所有的特性。通过快速阅读并运行这些示例，任何人都可以快速上手这个框架。
 
-Features of dyco-coroutine:
-1. Fully automated coroutine scheduling.
-2. Either shared or separate stacks can be set for coroutines.
-3. Socket/epoll hooks to automatically change the behavior of the socket/epoll API.
-4. Wait signal events. Especially waitchild, which is works well with `fork()+exec()`.
-5. Allow epoll inside each coroutine without blocking the scheduler.
-6. Half duplex channel and Publish-Subcribe channel for coroutine communication.
-7. Semaphore and Waitgroup for coroutine synchronization.
-8. TLS/SSL non-block concurrent server support.
-9. Scheduler and be stopped by any coroutine, and continue running in main process.
-10. Multi-thread supported.
+`dyco-coroutine`的特性:
+1. 全自动的协程调度。
+2. 支持为协程设定独立的运行栈，或者设定采用共享栈。
+3. 支持Socket/epoll钩子，可以改变一些上层网络API的行为。
+4. 支持等待信号事件。尤其是等待子进程，适合跟`fork()+exec()`配合使用。
+5. 支持在协程内部使用epoll，而不阻塞整个调度器循环。
+6. 提供了半双工信道和发布订阅信道，支持协程通信。
+7. 提供了信号量和等待组功能，支持实现协程同步。
+8. 支持非阻塞的TLS/SSL并发服务。
+9. 调度器及其管理的协程可以被暂停，然后在适当的时机恢复。
+10. 支持多线程。
 
 ![DYCOARCH](./img/arch.png)
 
-There are still some future works:
-1. Support different platforms. This part can be referred to `jamwt/libtask`.
-2. Make dyco-coroutine a shared library: **libdyco**. Then programers can use it by simply link this lib when compiling.
-3. Discover more feature requests and bugs by getting more people to use them.
-4. Performance optimization. Using ucontext predestines the framework to not be the best at switching performance. But there is still room for optimization.
+预计未来还有一些工作方向:
+1. 支持更多不同的平台。这部分实现可以参考`jamwt/libtask`。
+2. 把dyco-coroutine制作成共享库**libdyco**。开发人员可以简单地在编译程序时链接这个库。
+3. 发掘更多的特性需求，并不断完善。寻找Bug并修复。
+4. 性能优化。使用ucontext作为底层切换策略，意味着这个框架在协程切换性能上很难做到顶尖的表现（相比于直接用汇编）。但是依然可能存在其他的优化空间。
 
-You can give me a 🌟, or recommend it to others if you found dyco-coroutine helpful. And feel free to open issues or pull requests to make this project better. 🌈
+如果这个项目对你有用，可以给个星星以表支持。也可以推荐给其他人用用看。吐槽或者有问题随时提issue。如果有想法也可以提PR，共同合作让这个项目变得更好。🌈
 
-# Build
+# 构建
 
 ```bash
-# optional
+# 可选
 $ sudo apt install libssl-dev
 $ sudo apt install libhiredis-dev
 
-# build
+# make编译
 $ cd dyco-coroutine
 $ make
 
-# run
+# 运行
 $ ./bin/xxx_example
 ```
 
-# Get Started
+# 快速开始
 
 ```c
 #include "dyco_coroutine.h"
@@ -143,13 +143,13 @@ int main()
 }
 ```
 
-# User APIs
+# 用户接口
 
 ## Coroutine
 
-Some basic coroutine methods are defined here. `sleep/wait/coroID` can only be called inside coroutine functions.
+这里定义了一些基本的协程方法。注意`sleep/wait/coroID`只能在协程里调用。
 
-`setStack` is **optional**. If the stack is not set before the coroutine runs. All coroutines whose stack is not set will share the stack of the scheduler. It saves memory space, but costs time for copying stacks when these coroutines yield. Thus, if a coroutine need frequently yield, it's better to set a stack for it. See more in `example/*`.
+`setStack` 是**可选的**。如果在协程运行之前没有设置栈，那么默认协程是在调度器提供的共享栈上运行。否则，则协程将运行在独立的预设栈上。共享栈节约内存空间，但是每次切换都会拷贝出去，造成性能开销。因此如果一个协程需要频繁地切出切入，最好为其设置独立栈。详见 `example/*`。
 
 ```c
 // return the coroutine ID on success, < 0 on error
@@ -182,7 +182,7 @@ int dyco_coroutine_getSchedCount(int cid);
 
 ## Scheduler
 
-Some basic scheduler methods are defined here. In fact, scheduling coroutines is automated in dyco. `create` is **optional**. `run` is enough in most cases. See more in `example/*`.
+这里定义了基本的调度器方法。实际上，dyco里的协程调度是由调度器自动完成的。`create`是可选的，`run`在大多数情况下足矣。详见`example/*`。
 
 ```c
 // return 0 when done, 1 when stopped, < 0 on error
@@ -208,7 +208,7 @@ int dyco_schedule_getCoroCount();
 
 ## Scheduler Call
 
-Scheduler call provides interfaces for coroutines to influence the behavior of its scheduler, such as globally block some signals, stop or abort the scheduler. See more in `example/stop_abort.c`.
+调度器调用为协程提供了影响调度器行为的接口，比如阻塞某些信号，暂停或者终止调度器。详见`example/stop_abort.c`。
 
 ```c
 // see sigprocmask
@@ -221,7 +221,7 @@ void dyco_schedcall_abort();
 
 ## epoll
 
-Although programers use coroutine to achieve asynchronous I/O performance by programming in a synchronous manner, the traditional I/O multiplexing manner is also supported by dyco. If `COROUTINE_HOOK` is enabled, call `epoll_wait` will not block the scheduling loop. `dyco_epoll_xxx` APIs is also provided for convenience. See more in `example/epoll.c`.
+尽管开发人员使用协程是为了以同步的编程方式达到接近异步的I/O性能，但是dyco同样也支持传统的I/O多路复用编程方式。如果`COROUTINE_HOOK`宏被开启，调用`epoll_wait`将不会阻塞调度循环。方便起见，dyco也提供了`dyco_epoll_xxx`系列接口。详见`example/epoll.c`。
 
 ```c
 // return 0 on success
@@ -240,11 +240,11 @@ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 
 ## Signal
 
-By calling `dyco_signal` APIs, wait signals will not block the scheduling loop. `waitchild + fork + exec` is helpful in some cases. Other signal is also supported. 
+通过调用`dyco_signal`系列接口，等待某些信号的出现将不会导致调度循环被阻塞。`waitchild + fork + exec`在某些情况下尤其有用。等待其他信号也是支持的。
 
-Note that the signals set by calling `signal_init` will be **blocked** until `signal_destroy` is called.
+注意，调用`signal_init`后，指定的信号将被暂时屏蔽，直到`signal_destroy`被调用。
 
-See more in `example/signal.c`.
+详见`example/signal.c`。
 
 ```c
 // return pid of the child on success, < 0 on error
@@ -260,7 +260,7 @@ int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout);
 
 ## Half Duplex Channel
 
-Half duplex channel is provided for **simple** communications between coroutines. `send` will return only if the channel is empty or the message is received by receiver. See more in `example/channel.c`.
+半双工信道用于提供**简单**的协程通信。`send`只有在信道空闲或者消息被接收方读走的情况下才能立刻返回，否则将会引起等待。详见`example/channel.c`。
 
 ```c
 // size: max length of the message
@@ -277,7 +277,8 @@ ssize_t dyco_channel_recv(dyco_channel *chan, void *buf, size_t maxsize, int tim
 
 ## Publish-subscribe Channel
 
-Pub-Sub channel is provided for **1-to-N** communications. `publish` won't success if there is no subscriber. For each new message, `subscribe` should be called by subscribers, that is, subscribe will not continue automatically. See more in `example/pubsub.c`.
+发布订阅信道提供了**1对N**协程通信。如果没有订阅者，`publish`将会失败。对于每个消息，订阅者都需要提前调用`subscribe`来订阅，换言之，订阅不会自动持续。详见`example/pubsub.c`。
+
 
 ```c
 // size: max length of the message
@@ -294,7 +295,7 @@ ssize_t dyco_pubsub_subscribe(dyco_pubsubchannel *pschan, void *buf, size_t maxs
 
 ## Waitgroup
 
-Waitgroup is provided for **N-to-N** synchronization. Coroutines can join a waitgroup by calling `add`, notify the waitgroup by calling `done`, and wait all or a certain number of other coroutines by calling `wait`. See more in `example/waitgroup.c`.
+等待组提供了**N对N**的协程同步。协程可以通过调用`add`来加入某个等待组，调用`done`来提醒这个等待组，或者通过调用`wait`来等待一定数量的协程完成。详见`example/waitgroup.c`。 
 
 ```c
 // suggest_size: estimated max number of coroutines on the waitgroup
@@ -316,7 +317,7 @@ int dyco_waitgroup_wait(dyco_waitgroup* group, int target, int timeout);
 
 ## Semaphore
 
-Strictly speaking, each dyco scheduler runs a single thread, where at most one coroutine is running at any time. But these coroutines may ACT LIKE running at the same time. Therefore, semaphore may be helpful in some cases, for example, when we need control the number of active connections. See more in `example/semaphore.c`.
+严格来讲，每个dyco调度器只运行在一个线程上，每个线程同一时刻最多只有一个协程在运行。但是这些协程看起来像是同时发生的。因此，信号量在某些场合可能派上用场，比如我们需要控制同时活跃的连接数。详见`example/semaphore.c`。
 
 ```c
 // value: initial value of the semaphore
@@ -332,8 +333,9 @@ int dyco_semaphore_signal(dyco_semaphore *sem);
 
 ## Socket
 
-dyco socket API can be called the same as socket API, while they will not block the scheduling loop. 
-If `COROUTINE_HOOK` is defined, normal socket API will act like dyco socket API. Besides, it will change the behavior of other high level network APIs who call normal socket API in its process, such as database client APIs and DNS APIs. See more in `example/socket_client.c example/socket_server.c example/network.c`.
+dyco提供的socket接口可以像系统的socket接口一样调用，而不会阻塞调度循环。
+ 
+如果`COROUTINE_HOOK`宏被开启，系统的socket接口就会表现出dyco提供的socket相同的行为。而且，这也会改变一些高级的网络接口的行为，因为它们底层也调用了系统的socket接口。比如redis的同步接口，和gethostbyname等接口，将不会阻塞调度循环. 详见`example/socket_client.c example/socket_server.c example/network.c`.
 
 ```c
 int dyco_socket(int domain, int type, int protocol);
@@ -350,9 +352,9 @@ ssize_t dyco_recvfrom(int fd, void *buf, size_t len, int flags,
 
 ## SSL
 
-dyco SSL API is provided to bring great performance gains to SSL communication. But `libssl` and `libcrypto` must be installed before building dyco-coroutine if anyone want to call SSL API. See more in `example/ssl_server.c example/ssl_client`.
+dyco提供的SSL接口能巨大改善SSL通信的性能。但如果要使用这些接口，`libssl`和`libcrypto`需要在编译dyco之前预先安装。详见`example/ssl_server.c example/ssl_client`。
 
-**Lack of SSL part is also OK**, the main part of dyco can be built without any dependencies.
+**缺少SSL部分也是可以的**，dyco的核心部分不需要任何依赖。
 
 ```c
 // return 1 on success, else on error
@@ -370,4 +372,4 @@ int dyco_SSL_write(SSL *ssl, const void *buf, int num);
 
 # About Coroutine
 
-TBD
+待完成

@@ -60,6 +60,7 @@ _save_stack(dyco_coroutine *co) {
 	}
 	co->stack_size = cursize;
 	memcpy(co->stack, &dummy, co->stack_size);
+	SETBIT(co->status, COROUTINE_FLAGS_ALLOCSTACKMEM);
 	return;
 }
 
@@ -223,7 +224,7 @@ dyco_coroutine_free(dyco_coroutine *co) {
 		sigprocmask(SIG_SETMASK, &co->old_sigmask, NULL);
 		close(co->sigfd);
 	}
-	if ((!TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK)) && co->stack) {
+	if (TESTBIT(co->status, COROUTINE_FLAGS_ALLOCSTACKMEM)) {
 		free(co->stack);
 		co->stack = NULL;
 	}
@@ -283,11 +284,20 @@ dyco_coroutine_setStack(int cid, void *stackptr, size_t stacksize)
 	if ((co == NULL) || (!TESTBIT(co->status, COROUTINE_STATUS_NEW))) {
 		return -1;
 	}
-	if ((stackptr == NULL) || (stacksize == 0)) {
+	if (stacksize == 0) {
 		co->stack = NULL;
 		co->stack_size = 0;
 		CLRBIT(co->status, COROUTINE_FLAGS_OWNSTACK);
 		return 0;
+	}
+	if (stackptr == NULL) {
+		int page_size = getpagesize();
+		co->stack_size = stacksize + stacksize % page_size;
+		int ret = posix_memalign(&co->stack, page_size, co->stack_size);
+		assert(ret == 0);
+		SETBIT(co->status, COROUTINE_FLAGS_OWNSTACK);
+		SETBIT(co->status, COROUTINE_FLAGS_ALLOCSTACKMEM);
+		return 1;
 	}
 	co->stack = stackptr;
 	co->stack_size = stacksize;
