@@ -1,3 +1,6 @@
+## 2022-10-24: Happy Programers' Day!
+Now `libdyco` can be installed, then programers can use it by simply link this lib when compiling.
+
 ## 2022-10-20: v1.0.0 released!
 
 Today, the first version of dyco-coroutine has been finished. I hope this framework to be TRULY **practical** and **user-friendly**, rather than just a coroutine demo. This framework was first inspired by the `wangbojing/NtyCo` project.

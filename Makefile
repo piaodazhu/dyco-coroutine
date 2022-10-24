@@ -5,8 +5,17 @@ SUB_DIR = src/ example/
 ROOT_DIR = $(shell pwd)
 OBJS_DIR = $(ROOT_DIR)/objs
 BIN_DIR = $(ROOT_DIR)/bin
+LIB_DIR = $(ROOT_DIR)/lib
+SRC_DIR = $(ROOT_DIR)/src
+
+OBJS = $(patsubst %.c, %.o, $(notdir $(wildcard $(SRC_DIR)/*.c)))
+HDR = $(notdir $(wildcard $(SRC_DIR)/*.h))
+HDR_INSTALL_DIR = /usr/local/include/
+LIB = libdyco.so
+LIB_INSTALL_DIR = /usr/local/lib/
 
 BIN = socket_server_example socket_client_example epoll_example sleep_example setstack_example signal_example stop_abort_example channel_example waitgroup_example pubsub_example semaphore_example multithread_example
+
 FLAG = -lpthread -O3 -ldl -I $(ROOT_DIR)/src
 SSLFLAG = -lssl -lcrypto -D DYCO_SSL_OK
 
@@ -22,16 +31,13 @@ ifdef HASSSL
 	FLAG += $(SSLFLAG)
 endif
 
-CUR_SOURCE = ${wildcard *.c}
-CUR_OBJS = ${patsubst %.c, %.o, %(CUR_SOURCE)}
+export CC BIN_DIR OBJS_DIR ROOT_DIR FLAG BIN ECHO LIB_DIR
 
-export CC BIN_DIR OBJS_DIR ROOT_DIR FLAG BIN ECHO
-
-all : PREPARE $(SUB_DIR) $(BIN)
+all : PREPARE $(SUB_DIR) $(BIN) $(LIB)
 .PHONY : all
 
 PREPARE:
-	mkdir -p $(OBJS_DIR) $(BIN_DIR)
+	mkdir -p $(OBJS_DIR) $(BIN_DIR) $(LIB_DIR)
 
 $(SUB_DIR) : ECHO
 	make -C $@
@@ -40,51 +46,67 @@ ECHO :
 	@echo $(SUB_DIR)
 
 
-socket_server_example : $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/socket_server.o
+socket_server_example : $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/socket_server.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) 
 
-socket_client_example : $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/socket_client.o
+socket_client_example : $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/socket_client.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) 
 
-epoll_example : $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/epoll.o
+epoll_example : $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/epoll.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) 
 
-sleep_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/sleep.o
+sleep_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/sleep.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) 
 
-setstack_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/setstack.o
+setstack_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/setstack.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) 
 
-signal_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/signal.o $(OBJS_DIR)/dyco_signal.o
+signal_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/signal.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) 
 
-stop_abort_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/stop_abort.o
+stop_abort_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/stop_abort.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
 
-channel_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/dyco_channel.o $(OBJS_DIR)/channel.o
+channel_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/channel.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
 
-waitgroup_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/dyco_waitgroup.o $(OBJS_DIR)/waitgroup.o
+waitgroup_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/waitgroup.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
 
-pubsub_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/dyco_pubsub.o $(OBJS_DIR)/pubsub.o
+pubsub_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/pubsub.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
 
-semaphore_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/dyco_semaphore.o $(OBJS_DIR)/semaphore.o
+semaphore_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/semaphore.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
 
-network_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/network.o
+network_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/network.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG) -lhiredis
 
-ssl_server_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/dyco_ssl.o $(OBJS_DIR)/ssl_server.o
+ssl_server_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/ssl_server.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
 
-ssl_client_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/dyco_ssl.o $(OBJS_DIR)/ssl_client.o
+ssl_client_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/ssl_client.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
 
-multithread_example: $(OBJS_DIR)/dyco_hook.o $(OBJS_DIR)/dyco_socket.o $(OBJS_DIR)/dyco_coroutine.o $(OBJS_DIR)/dyco_epoll.o $(OBJS_DIR)/dyco_schedule.o $(OBJS_DIR)/dyco_schedcall.o $(OBJS_DIR)/multithread.o
+multithread_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/multithread.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
+
+$(LIB): $(addprefix $(LIB_DIR)/, $(OBJS))
+	$(CC) -shared -o $(LIB_DIR)/$@ $^ $(FLAG)
+	
+install: $(LIB)
+	cp $(LIB_DIR)/$(LIB) $(LIB_INSTALL_DIR)
+	cp $(addprefix $(SRC_DIR)/, $(HDR)) $(HDR_INSTALL_DIR)
+	ldconfig
+	rm -rf *.o *.so*
+	echo "Installing done."
+
+uninstall:
+	rm -rf $(LIB_INSTALL_DIR)$(LIB)
+	rm -rf $(addprefix $(HDR_INSTALL_DIR), $(HDR))
+	ldconfig
+	echo "Uninstalling done."
 
 clean :
-	rm -rf $(BIN_DIR)/* $(OBJS_DIR)/*
+	rm -rf $(BIN_DIR)/* $(OBJS_DIR)/* $(LIB_DIR)/*
 

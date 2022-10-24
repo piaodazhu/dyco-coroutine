@@ -1,5 +1,6 @@
 #ifndef __COROUTINE_H__
 #define __COROUTINE_H__
+#define DYCO_VERSION		"v1.0.0"
 
 // ------ 1. Included Headers
 #define _GNU_SOURCE
@@ -402,3 +403,9 @@ extern recv_t recv_f;
 extern recvfrom_t recvfrom_f;
 extern epoll_wait_t epoll_wait_f;
 #endif
+
+// ------ 8. Version
+static char* dyco_version()
+{
+	return DYCO_VERSION;
+}
