@@ -30,6 +30,8 @@ There are still some future works:
 1. Support different platforms. This part can be referred to `jamwt/libtask` and `heiher/hev-task-system`.
 2. Discover more feature requests and bugs by getting more people to use them.
 3. Performance optimization. Using ucontext predestines the framework to not be the best at switching performance. But there is still room for optimization.
+4. Coroutine Pool.
+5. Simpler build solution. Don't make things more complicated.
 
 You can give me a 🌟, or recommend it to others if you found dyco-coroutine helpful. And feel free to open issues or pull requests to make this project better. 🌈
 
@@ -225,7 +227,7 @@ void dyco_schedcall_stop();
 void dyco_schedcall_abort();
 ```
 
-## epoll
+## poll/epoll
 
 Although programers use coroutine to achieve asynchronous I/O performance by programming in a synchronous manner, the traditional I/O multiplexing manner is also supported by dyco. If `COROUTINE_HOOK` is enabled, call `epoll_wait` will not block the scheduling loop. `dyco_epoll_xxx` APIs is also provided for convenience. See more in `example/epoll.c`.
 
@@ -241,6 +243,9 @@ int dyco_epoll_wait(struct epoll_event *events, int maxevents, int timeout);
 
 // see epoll_wait
 int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
+
+// see poll
+int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 ```
 
 

@@ -125,7 +125,7 @@ _wait_events(int fd, unsigned int events, int timeout)
 	pfd.fd = fd;
 	pfd.events = (short)(events & 0xffff);
 	if (timeout == 0) {
-		return poll(&pfd, 1, 0);
+		return poll_f(&pfd, 1, 0);
 	}
 
 	dyco_schedule *sched = _get_sched();
@@ -150,7 +150,7 @@ _wait_events(int fd, unsigned int events, int timeout)
 	_schedule_cancel_wait(co, fd);
 	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, &ev);
 
-	return poll(&pfd, 1, 0);
+	return poll_f(&pfd, 1, 0);
 }
 
 int 

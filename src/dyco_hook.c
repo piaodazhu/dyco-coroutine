@@ -9,8 +9,9 @@ recv_t recv_f;
 recvfrom_t recvfrom_f;
 send_t send_f;
 sendto_t sendto_f;
-// socket handle
+// IO multiplexing wait handle
 epoll_wait_t epoll_wait_f;
+poll_t poll_f;
 
 __attribute__((constructor)) static void _inithook()
 {
@@ -24,8 +25,9 @@ __attribute__((constructor)) static void _inithook()
 	recvfrom_f = (recvfrom_t)dlsym(RTLD_NEXT, "recvfrom");
 	send_f = (send_t)dlsym(RTLD_NEXT, "send");
 	sendto_f = (sendto_t)dlsym(RTLD_NEXT, "sendto");
-	// epoll handle
+	// IO multiplexing wait handle
 	epoll_wait_f = (epoll_wait_t)dlsym(RTLD_NEXT, "epoll_wait");
+	poll_f = (poll_t)dlsym(RTLD_NEXT, "poll");
 #else
 	// socket handle
 	socket_f = socket;
@@ -36,7 +38,8 @@ __attribute__((constructor)) static void _inithook()
 	recvfrom_f = recvfrom;
 	send_f = send;
 	sendto_f = sendto;
-	// epoll handle
+	// IO multiplexing wait handle
 	epoll_wait_f = epoll_wait;
+	poll_f = poll;
 #endif
 }

@@ -176,6 +176,53 @@ epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 	return epoll_wait_f(epfd, events, maxevents, 0);
 }
 
+int 
+poll(struct pollfd *fds, nfds_t nfds, int timeout)
+{
+	if (timeout == 0) {
+		return poll_f(fds, nfds, 0);
+	}
+
+	dyco_schedule *sched = _get_sched();
+	if (sched == NULL) {
+		return -1;
+	}
+	dyco_coroutine *co = sched->curr_thread;
+	if (co == NULL) {
+		return -1;
+	}
+
+	struct epoll_event ev;
+
+	int epfd = epoll_create(nfds);
+	int i, ret;
+	for (i = 0; i < nfds; i++) {
+		ev.events = fds[i].events;
+		ev.data.fd = fds[i].fd;
+		ret = epoll_ctl(epfd, EPOLL_CTL_ADD, fds[i].fd, &ev);
+		assert(ret == 0);
+	}
+	
+	ev.data.fd = epfd;
+	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
+	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, epfd, &ev);
+	_schedule_sched_wait(co, epfd);
+	_schedule_sched_sleep(co, timeout);
+
+	_yield(co);
+
+	_schedule_cancel_sleep(co);
+	_schedule_cancel_wait(co, epfd);
+	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, epfd, NULL);
+
+	for (i = 0; i < nfds; i++) {
+		ret = epoll_ctl(epfd, EPOLL_CTL_DEL, fds[i].fd, NULL);
+		assert(ret == 0);
+	}
+
+	return poll_f(fds, nfds, timeout);
+}
+
 #endif
 
 #endif

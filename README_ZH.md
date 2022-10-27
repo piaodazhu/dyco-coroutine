@@ -30,6 +30,8 @@
 1. 支持更多不同的平台。这部分实现可以参考`jamwt/libtask`。
 2. 发掘更多的特性需求，并不断完善。寻找Bug并修复。
 3. 性能优化。使用ucontext作为底层切换策略，意味着这个框架在协程切换性能上很难做到顶尖的表现（相比于直接用汇编）。但是依然可能存在其他的优化空间。
+4. 协程池。
+5. 更丰富的构建方式。减少构建的复杂性，而不是增加。
 
 如果这个项目对你有用，可以给个星星以表支持。也可以推荐给其他人用用看。吐槽或者有问题随时提issue。如果有想法也可以提PR，共同合作让这个项目变得更好。🌈
 
@@ -225,7 +227,7 @@ void dyco_schedcall_stop();
 void dyco_schedcall_abort();
 ```
 
-## epoll
+## poll/epoll
 
 尽管开发人员使用协程是为了以同步的编程方式达到接近异步的I/O性能，但是dyco同样也支持传统的I/O多路复用编程方式。如果`COROUTINE_HOOK`宏被开启，调用`epoll_wait`将不会阻塞调度循环。方便起见，dyco也提供了`dyco_epoll_xxx`系列接口。详见`example/epoll.c`。
 
@@ -241,6 +243,9 @@ int dyco_epoll_wait(struct epoll_event *events, int maxevents, int timeout);
 
 // see epoll_wait
 int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
+
+// see poll
+int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 ```
 
 

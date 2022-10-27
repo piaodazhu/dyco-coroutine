@@ -252,6 +252,11 @@ static inline uint64_t _diff_usecs(uint64_t t1, uint64_t t2)
 	return t2 - t1;
 }
 
+static inline int _tv_ms(struct timeval *tv)
+{
+	return tv->tv_sec * 1000 + tv->tv_usec/1000;
+}
+
 static inline uint64_t _usec_now(void)
 {
 	struct timeval t1 = {0, 0};
@@ -317,13 +322,14 @@ int dyco_schedcall_sigprocmask(int __how, sigset_t *__set, sigset_t *__oset);
 void dyco_schedcall_stop();
 void dyco_schedcall_abort();
 
-// 6.4 epoll
+// 6.4 poll/epoll
 int dyco_epoll_init();
 void dyco_epoll_destroy();
 int dyco_epoll_add(int fd, struct epoll_event *ev);
 int dyco_epoll_del(int fd, struct epoll_event *ev);
 int dyco_epoll_wait(struct epoll_event *events, int maxevents, int timeout);
-int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
+// int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
+// int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 
 // 6.5 signal
 int dyco_signal_waitchild(const pid_t child, int *status, int timeout);
@@ -388,11 +394,13 @@ typedef int (*connect_t)(int sockfd, const struct sockaddr *addr, socklen_t addr
 typedef ssize_t (*send_t)(int sockfd, const void *buf, size_t len, int flags);
 typedef ssize_t (*recv_t)(int sockfd, void *buf, size_t len, int flags);
 typedef ssize_t (*sendto_t)(int sockfd, const void *buf, size_t len, int flags,
-			    const struct sockaddr *dest_addr, socklen_t addrlen);
+				const struct sockaddr *dest_addr, socklen_t addrlen);
 typedef ssize_t (*recvfrom_t)(int sockfd, void *buf, size_t len, int flags,
-			      struct sockaddr *src_addr, socklen_t *addrlen);
+				struct sockaddr *src_addr, socklen_t *addrlen);
 typedef int (*epoll_wait_t)(int epfd, struct epoll_event *events, 
 				int maxevents, int timeout);
+typedef int (*poll_t)(struct pollfd *fds, nfds_t nfds, int timeout);
+
 extern socket_t socket_f;
 extern close_t close_f;
 extern accept_t accept_f;
@@ -402,10 +410,12 @@ extern sendto_t sendto_f;
 extern recv_t recv_f;
 extern recvfrom_t recvfrom_f;
 extern epoll_wait_t epoll_wait_f;
-#endif
+extern poll_t poll_f;
 
 // ------ 8. Version
 static char* dyco_version()
 {
 	return DYCO_VERSION;
 }
+
+#endif
