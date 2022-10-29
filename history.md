@@ -1,3 +1,12 @@
+## 2022-10-29: v1.1.0 released!
+
+Updates:
+1. Support Coroutines Pool for better performance.
+2. Support `poll()` hook.
+3. `libdyco` is build and can be linked easily.
+4. Fix some bugs.
+5. Improve the documents. Bring some new plans in future works.
+
 ## 2022-10-24: Happy Programers' Day!
 Now `libdyco` can be installed, then programers can use it by simply link this lib when compiling.
 

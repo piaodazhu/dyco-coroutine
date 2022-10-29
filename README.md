@@ -152,13 +152,13 @@ int main()
 
 # User APIs
 
-## Coroutine
+## Coroutine & Coroutines Pool
 
 Some basic coroutine methods are defined here. `sleep/wait/coroID` can only be called inside coroutine functions.
 
 `setStack` is **optional**. If the stack is not set before the coroutine runs. All coroutines whose stack is not set will share the stack of the scheduler. It saves memory space, but costs time for copying stacks when these coroutines yield. Thus, if a coroutine need frequently yield, it's better to set a stack for it. See more in `example/*`.
 
-Coroutines pool is provided to avoid create and release coroutine/stack memory frequently. The coroutines pool can be create at any time and be resized after it created. Coroutines who belongs to a corotines pool will automatically return to the pool after user function finishes. By calling `obtain`, you can get a free coroutine from the pool. See more in `example/coropool_example.c`
+**Coroutines Pool** is provided to avoid create and release coroutine/stack memory frequently. The coroutines pool can be create at any time and be resized after it created. Coroutines who belongs to a corotines pool will automatically return to the pool after user function finishes. By calling `obtain`, you can get a free coroutine from the pool. See more in `example/coropool_example.c`
 
 ```c
 // return the coroutine ID on success, < 0 on error
@@ -397,4 +397,7 @@ int dyco_SSL_write(SSL *ssl, const void *buf, int num);
 
 # About Coroutine
 
-TBD
+There are 3 mainstream ways to implement coroutine switch:
+- Assembly Instructions. This is faster than other ways, but some code should be written in assembly language for each platform.
+- `setjmp()`/`longjmp()`. They are faster than ucontext. But I personally think it is the most inappropriate method of implementing coroutine switch. `setjmp()`/`longjmp()` will loss the stack. To avoid this, you have to set stack pointer in the env_buf structure. This structure is totally different in each platform, so why not use assembly instructions?
+- ucontext. This method consists of 4 interfaces which are platform-independent, so the coroutine switch implementation code with ucontext is quite elegant. Unfortunately, **ucontext has been removed from POSIX**, because **the use of function declarators with empty parentheses (not prototype-format parameter type declarators) is an obsolescent feature**. It is still available in Linux, and won't bring problems for dyco. So I choose this method. For supporting more platforms, we can build ucontext in userspace, which can be referred to `jamwt/libtask`.
