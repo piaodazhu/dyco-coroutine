@@ -30,8 +30,7 @@ There are still some future works:
 1. Support different platforms. This part can be referred to `jamwt/libtask` and `heiher/hev-task-system`.
 2. Discover more feature requests and bugs by getting more people to use them.
 3. Performance optimization. Using ucontext predestines the framework to not be the best at switching performance. But there is still room for optimization.
-4. Coroutine Pool.
-5. Simpler build solution. Don't make things more complicated.
+4. Simpler build solution. Don't make things more complicated.
 
 You can give me a 🌟, or recommend it to others if you found dyco-coroutine helpful. And feel free to open issues or pull requests to make this project better. 🌈
 
@@ -159,6 +158,8 @@ Some basic coroutine methods are defined here. `sleep/wait/coroID` can only be c
 
 `setStack` is **optional**. If the stack is not set before the coroutine runs. All coroutines whose stack is not set will share the stack of the scheduler. It saves memory space, but costs time for copying stacks when these coroutines yield. Thus, if a coroutine need frequently yield, it's better to set a stack for it. See more in `example/*`.
 
+Coroutines pool is provided to avoid create and release coroutine/stack memory frequently. The coroutines pool can be create at any time and be resized after it created. Coroutines who belongs to a corotines pool will automatically return to the pool after user function finishes. By calling `obtain`, you can get a free coroutine from the pool. See more in `example/coropool_example.c`
+
 ```c
 // return the coroutine ID on success, < 0 on error
 int dyco_coroutine_create(proc_coroutine func, void *arg);
@@ -186,6 +187,21 @@ int dyco_coroutine_getUdata(int cid, void **udata);
 
 // return total yield times of a coroutine 
 int dyco_coroutine_getSchedCount(int cid);
+
+// return NULL on error
+dyco_coropool* dyco_coropool_create(int totalsize, size_t stacksize);
+dyco_coropool* dyco_coropool_resize(dyco_coropool* cp, int newsize);
+
+// return 0 on success
+int dyco_coropool_destroy(dyco_coropool** cp);
+
+// return number of available coroutine in this pool
+int dyco_coropool_available(dyco_coropool* cp);
+
+// obtain a coroutine from the pool. 
+// If there is no free coroutine, wait timeout
+// return 0 on timeout, -1 on error, > 0 on success
+int dyco_coropool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
 ```
 
 ## Scheduler

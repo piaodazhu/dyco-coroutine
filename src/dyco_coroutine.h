@@ -6,7 +6,7 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 
-#define NDEBUG
+// #define NDEBUG
 #include <assert.h>
 
 #include <stdio.h>
@@ -42,12 +42,21 @@
 #define		DYCO_DEFAULT_CHANNELSIZE	256
 
 // ------ 3. Data Structure Defination
+// 3.0 sublist
+typedef struct _sublist dyco_sublist;
+struct _sublist {
+	int	notifyfd;
+	dyco_sublist	*next;
+};
+
 // 3.1 scheduler
 typedef struct _dyco_coroutine dyco_coroutine;
 typedef struct _dyco_coroutine_queue dyco_coroutine_queue;
 typedef struct _dyco_coroutine_rbtree_sleep dyco_coroutine_rbtree_sleep;
+typedef struct _dyco_coropool_list dyco_coropool_list;
 TAILQ_HEAD(_dyco_coroutine_queue, _dyco_coroutine);
 RB_HEAD(_dyco_coroutine_rbtree_sleep, _dyco_coroutine);
+SLIST_HEAD(_dyco_coropool_list, _dyco_coroutine);
 
 typedef struct _schedcall dyco_schedcall;
 typedef enum {
@@ -109,6 +118,15 @@ struct _dyco_schedule
 };
 
 // 3.2 coroutine
+typedef struct _coroutinepool dyco_coropool;
+struct _coroutinepool {
+	int			totalsize;
+	int			activenum;
+	int			stacksize;
+	dyco_sublist		*sublist;
+	dyco_coropool_list	freelist;
+};
+
 typedef void (*proc_coroutine)(void *);
 typedef enum
 {
@@ -124,7 +142,8 @@ typedef enum
 	COROUTINE_FLAGS_WAITING,
 	COROUTINE_FLAGS_EXPIRED,
 	COROUTINE_FLAGS_IOMULTIPLEXING,
-	COROUTINE_FLAGS_WAITSIGNAL
+	COROUTINE_FLAGS_WAITSIGNAL,
+	COROUTINE_FLAGS_INCOROPOOL
 } dyco_coroutine_status;
 
 struct _dyco_coroutine
@@ -150,6 +169,9 @@ struct _dyco_coroutine
 	// static info
 	int 			cid;
 
+	// coroutine pool
+	dyco_coropool		*cpool;
+
 	// user customized data
 	void 			*udata;
 
@@ -159,6 +181,7 @@ struct _dyco_coroutine
 	
 	// container node
 	TAILQ_ENTRY(_dyco_coroutine) 	ready_next;
+	SLIST_ENTRY(_dyco_coroutine) 	cpool_next;
 	RB_ENTRY(_dyco_coroutine) 	sleep_node;
 };
 
@@ -185,14 +208,7 @@ struct _half_duplex_channel {
 };
 
 // 3.4 pubsub
-typedef struct _sublist dyco_sublist;
 typedef struct _waitgroup dyco_waitgroup;
-
-struct _sublist {
-	int	notifyfd;
-	dyco_sublist	*next;
-};
-
 struct _waitgroup {
 	int	tot_size;
 	int	finished;
@@ -282,6 +298,7 @@ int _resume(dyco_coroutine *co);
 void _yield(dyco_coroutine *co);
 int _wait_events(int fd, unsigned int events, int timeout);
 void dyco_coroutine_free(dyco_coroutine *co);
+void dyco_coropool_return(dyco_coroutine *co);
 
 // 5.2 scheduler
 void _schedule_sched_sleep(dyco_coroutine *co, int msecs);
@@ -306,6 +323,12 @@ int dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize);
 int dyco_coroutine_setUdata(int cid, void *udata);
 int dyco_coroutine_getUdata(int cid, void **udata);
 int dyco_coroutine_getSchedCount(int cid);
+
+dyco_coropool* dyco_coropool_create(int totalsize, size_t stacksize);
+dyco_coropool* dyco_coropool_resize(dyco_coropool* cp, int newsize);
+int dyco_coropool_destroy(dyco_coropool** cp);
+int dyco_coropool_available(dyco_coropool* cp);
+int dyco_coropool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
 
 // 6.2 scheduler
 int dyco_schedule_run();

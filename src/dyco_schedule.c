@@ -119,7 +119,7 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 	sched->loopwait_timeout = loopwait_timeout ? loopwait_timeout : DYCO_DEFAULT_TIMEOUT;
 	sched->birth = _usec_now();
 	sched->coro_count = 0;
-	sched->_cid_gen = 0;
+	sched->_cid_gen = 1;
 	sched->status = SCHEDULE_STATUS_READY;
 	sched->curr_thread = NULL;
 

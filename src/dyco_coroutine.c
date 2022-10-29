@@ -108,7 +108,11 @@ _resume(dyco_coroutine *co) {
 
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED)) {
 		_schedule_cancel_sleep(co);
-		dyco_coroutine_free(co);
+		if (TESTBIT(co->status, COROUTINE_FLAGS_INCOROPOOL))
+			dyco_coropool_return(co);
+		else
+			dyco_coroutine_free(co);
+		
 		return -1;
 	}
 	return 0;
@@ -193,17 +197,23 @@ dyco_coroutine_create(proc_coroutine func, void *arg) {
 	ret = _htable_insert(&sched->cid_co_map, co->cid, co);
 	assert(ret >= 0);
 
+	co->cpool = NULL;
+
 	co->udata = NULL;
 
 	co->epollfd = -1;
 	co->sigfd = -1;
 
 	++sched->coro_count;
-	TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
+	
+	if (func != NULL) {
+		TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
 
-	if (sched->status == SCHEDULE_STATUS_DONE) {
-		sched->status = SCHEDULE_STATUS_READY;
+		if (sched->status == SCHEDULE_STATUS_DONE) {
+			sched->status = SCHEDULE_STATUS_READY;
+		}
 	}
+	
 	return co->cid;
 }
 

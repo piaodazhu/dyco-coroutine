@@ -14,7 +14,7 @@ HDR_INSTALL_DIR = /usr/local/include/
 LIB = libdyco.so
 LIB_INSTALL_DIR = /usr/local/lib/
 
-BIN = socket_server_example socket_client_example epoll_example sleep_example setstack_example signal_example stop_abort_example channel_example waitgroup_example pubsub_example semaphore_example multithread_example
+BIN = socket_server_example socket_client_example epoll_example sleep_example setstack_example signal_example stop_abort_example channel_example waitgroup_example pubsub_example semaphore_example multithread_example coropool_example
 
 FLAG = -lpthread -O3 -ldl -I $(ROOT_DIR)/src
 SSLFLAG = -lssl -lcrypto -D DYCO_SSL_OK
@@ -90,6 +90,10 @@ ssl_client_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/ssl_client.o
 
 multithread_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/multithread.o
 	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
+
+coropool_example: $(addprefix $(OBJS_DIR)/, $(OBJS)) $(OBJS_DIR)/coropool.o
+	$(CC) -o $(BIN_DIR)/$@ $^ $(FLAG)
+
 
 $(LIB): $(addprefix $(LIB_DIR)/, $(OBJS))
 	$(CC) -shared -o $(LIB_DIR)/$@ $^ $(FLAG)

@@ -30,8 +30,7 @@
 1. 支持更多不同的平台。这部分实现可以参考`jamwt/libtask`。
 2. 发掘更多的特性需求，并不断完善。寻找Bug并修复。
 3. 性能优化。使用ucontext作为底层切换策略，意味着这个框架在协程切换性能上很难做到顶尖的表现（相比于直接用汇编）。但是依然可能存在其他的优化空间。
-4. 协程池。
-5. 更丰富的构建方式。减少构建的复杂性，而不是增加。
+4. 更丰富的构建方式。减少构建的复杂性，而不是增加。
 
 如果这个项目对你有用，可以给个星星以表支持。也可以推荐给其他人用用看。吐槽或者有问题随时提issue。如果有想法也可以提PR，共同合作让这个项目变得更好。🌈
 
@@ -159,6 +158,8 @@ int main()
 
 `setStack` 是**可选的**。如果在协程运行之前没有设置栈，那么默认协程是在调度器提供的共享栈上运行。否则，则协程将运行在独立的预设栈上。共享栈节约内存空间，但是每次切换都会拷贝出去，造成性能开销。因此如果一个协程需要频繁地切出切入，最好为其设置独立栈。详见 `example/*`。
 
+这里也提供了协程池，来防止频繁地创建释放协程和栈的内存空间。任何时候都可以创建协程池，创建完成后可以修改协程池的大小。协程池中的协程在用户函数执行完成后会自动归还到协程池。通过调用`obtain`，你可以从协程池中获得一个空闲协程。详见 `example/coropool_example.c`。
+
 ```c
 // return the coroutine ID on success, < 0 on error
 int dyco_coroutine_create(proc_coroutine func, void *arg);
@@ -186,6 +187,21 @@ int dyco_coroutine_getUdata(int cid, void **udata);
 
 // return total yield times of a coroutine 
 int dyco_coroutine_getSchedCount(int cid);
+
+// return NULL on error
+dyco_coropool* dyco_coropool_create(int totalsize, size_t stacksize);
+dyco_coropool* dyco_coropool_resize(dyco_coropool* cp, int newsize);
+
+// return 0 on success
+int dyco_coropool_destroy(dyco_coropool** cp);
+
+// return number of available coroutine in this pool
+int dyco_coropool_available(dyco_coropool* cp);
+
+// obtain a coroutine from the pool. 
+// If there is no free coroutine, wait timeout
+// return 0 on timeout, -1 on error, > 0 on success
+int dyco_coropool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
 ```
 
 ## Scheduler
