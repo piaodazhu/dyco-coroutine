@@ -19,7 +19,7 @@
 #include <pthread.h>
 #include <signal.h>
 
-#include <ucontext.h>
+// #include <ucontext.h>
 
 #include <sys/time.h>
 #include <sys/poll.h>
@@ -32,6 +32,7 @@
 #include "sys_queue.h"
 #include "sys_tree.h"
 #include "dyco_htable.h"
+#include "dyco_ucontext.h"
 
 // ------ 2. User Configurations
 #define		COROUTINE_HOOK

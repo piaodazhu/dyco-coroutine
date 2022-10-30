@@ -9,6 +9,7 @@ LIB_DIR = $(ROOT_DIR)/lib
 SRC_DIR = $(ROOT_DIR)/src
 
 OBJS = $(patsubst %.c, %.o, $(notdir $(wildcard $(SRC_DIR)/*.c)))
+OBJS += $(patsubst %.S, %.o, $(notdir $(wildcard $(SRC_DIR)/*.S)))
 HDR = $(notdir $(wildcard $(SRC_DIR)/*.h))
 HDR_INSTALL_DIR = /usr/local/include/
 LIB = libdyco.so
