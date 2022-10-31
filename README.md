@@ -45,6 +45,7 @@ $ sudo apt install libhiredis-dev
 # optional for meson build
 $ sudo apt install meson
 $ sudo apt install ninja-build
+$ sudo apt install pkg-config
 
 # 2. Build with GNU make
 # run make

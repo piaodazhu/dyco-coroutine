@@ -63,6 +63,7 @@ $ sudo apt install libhiredis-dev
 # 可选，仅用于Meson + ninja构建
 $ sudo apt install meson
 $ sudo apt install ninja-build
+$ sudo apt install pkg-config
 
 # 2. 使用GNU make构建
 # 运行make

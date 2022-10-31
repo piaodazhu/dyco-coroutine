@@ -6,7 +6,7 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 
-// #define NDEBUG
+#define NDEBUG
 #include <assert.h>
 
 #include <stdio.h>
