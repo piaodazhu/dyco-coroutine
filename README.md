@@ -38,23 +38,50 @@ You can give me a 🌟, or recommend it to others if you found dyco-coroutine he
 # Build
 
 ```bash
+# 1. Preparation
 # optional
 $ sudo apt install libssl-dev
 $ sudo apt install libhiredis-dev
+# optional for meson build
+$ sudo apt install meson
+$ sudo apt install ninja-build
 
-# build
+# 2. Build with GNU make
+# run make
 $ cd dyco-coroutine
 $ make
 
-# run
+# run example
 $ ./bin/xxx_example
 
-# optional: make shared library after build
+# optional: install shared library after build
 $ sudo make install
+
 # just link this library
 $ gcc -o someoutput somecode.c -ldyco
+
 # uninstall
 $ sudo make uninstall
+
+# 3. Build with Meson + ninja
+# run meson build
+$ meson build_dir
+$ cd build_dir
+$ meson compile
+
+# run example
+$ build_dir/example/xxx_example
+
+# optional: install shared library after build
+$ cd build_dir
+$ sudo ninja install
+
+# just link this library
+$ gcc -o someoutput somecode.c -ldyco
+
+# uninstall
+$ cd build_dir
+$ sudo ninja uninstall
 ```
 
 # Get Started

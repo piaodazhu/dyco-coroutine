@@ -35,7 +35,7 @@ endif
 export CC BIN_DIR OBJS_DIR ROOT_DIR FLAG BIN ECHO LIB_DIR
 
 all : PREPARE $(SUB_DIR) $(BIN) $(LIB)
-.PHONY : all
+.PHONY : all clean
 
 PREPARE:
 	mkdir -p $(OBJS_DIR) $(BIN_DIR) $(LIB_DIR)
@@ -112,6 +112,6 @@ uninstall:
 	ldconfig
 	echo "Uninstalling done."
 
-clean :
+clean:
 	rm -rf $(BIN_DIR)/* $(OBJS_DIR)/* $(LIB_DIR)/*
 

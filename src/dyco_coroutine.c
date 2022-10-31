@@ -27,7 +27,7 @@ _exec(void *lt) {
 	_yield(co);
 }
 
-static void 
+void 
 _init_coro(dyco_coroutine *co) {
 
 	getcontext(&co->ctx);

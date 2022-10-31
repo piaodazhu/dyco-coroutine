@@ -55,6 +55,51 @@ $ sudo make install
 $ gcc -o someoutput somecode.c -ldyco
 # 卸载共享库
 $ sudo make uninstall
+
+# 1. 准备工作
+# 可选
+$ sudo apt install libssl-dev
+$ sudo apt install libhiredis-dev
+# 可选，仅用于Meson + ninja构建
+$ sudo apt install meson
+$ sudo apt install ninja-build
+
+# 2. 使用GNU make构建
+# 运行make
+$ cd dyco-coroutine
+$ make
+
+# 运行示例
+$ ./bin/xxx_example
+
+# 可选: 编译之后安装共享库
+$ sudo make install
+
+# 编译应用的时候直接链接
+$ gcc -o someoutput somecode.c -ldyco
+
+# 卸载共享库
+$ sudo make uninstall
+
+# 3. 使用Meson + ninja构建
+# 运行meson构建工具
+$ meson build_dir
+$ cd build_dir
+$ meson compile
+
+# 运行示例
+$ build_dir/example/xxx_example
+
+# 可选: 编译之后安装共享库
+$ cd build_dir
+$ sudo ninja install
+
+# 编译应用的时候直接链接
+$ gcc -o someoutput somecode.c -ldyco
+
+# 卸载共享库
+$ cd build_dir
+$ sudo ninja uninstall
 ```
 
 # 快速开始

@@ -292,7 +292,6 @@ static inline int _coroutine_sleep_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
 // ------ 5. Inner Primes
 // User DO NOT use them. Use User APIs is enough in most case.
 // 5.1 coroutine
-static void _init_coro(dyco_coroutine *co);
 int _resume(dyco_coroutine *co);
 void _yield(dyco_coroutine *co);
 int _wait_events(int fd, unsigned int events, int timeout);

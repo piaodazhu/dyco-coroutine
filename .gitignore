@@ -57,3 +57,8 @@ tmp/**
 todo
 .vscode/settings.json
 contextswitch.txt
+*.cert
+*.pem
+*.crt
+*.key
+build/**

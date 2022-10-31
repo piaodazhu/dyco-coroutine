@@ -1,3 +1,4 @@
+#!/bin/sh
 key_dir=.
 
 private_key="$key_dir/private_key.pem"
