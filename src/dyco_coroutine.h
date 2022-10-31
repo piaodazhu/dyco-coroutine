@@ -1,6 +1,6 @@
 #ifndef __COROUTINE_H__
 #define __COROUTINE_H__
-#define DYCO_VERSION		"v1.0.0"
+#define DYCO_VERSION		"v1.1.0"
 
 // ------ 1. Included Headers
 #define _GNU_SOURCE
@@ -19,8 +19,6 @@
 #include <pthread.h>
 #include <signal.h>
 
-// #include <ucontext.h>
-
 #include <sys/time.h>
 #include <sys/poll.h>
 #include <sys/epoll.h>
@@ -29,10 +27,10 @@
 #include <sys/eventfd.h>
 #include <sys/socket.h>
 
+#include "dyco_ucontext.h"
 #include "sys_queue.h"
 #include "sys_tree.h"
 #include "dyco_htable.h"
-#include "dyco_ucontext.h"
 
 // ------ 2. User Configurations
 #define		COROUTINE_HOOK

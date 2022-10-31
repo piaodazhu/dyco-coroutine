@@ -15,19 +15,20 @@ With this framework, programers can achieve asynchronous I/O performance by prog
 Features of dyco-coroutine:
 1. Fully automated coroutine scheduling.
 2. Either shared or separate stacks can be set for coroutines.
-3. Socket/epoll hooks to automatically change the behavior of the socket/epoll API.
-4. Wait signal events. Especially waitchild, which is works well with `fork()+exec()`.
-5. Allow epoll inside each coroutine without blocking the scheduler.
-6. Half duplex channel and Publish-Subcribe channel for coroutine communication.
-7. Semaphore and Waitgroup for coroutine synchronization.
-8. TLS/SSL non-block concurrent server support.
-9. Scheduler and be stopped by any coroutine, and continue running in main process.
-10. Multi-thread supported.
+3. Coroutines pool for better performance.
+4. Socket/epoll hooks to automatically change the behavior of the socket/epoll API.
+5. Wait signal events. Especially waitchild, which is works well with `fork()+exec()`.
+6. Allow epoll inside each coroutine without blocking the scheduler.
+7. Half duplex channel and Publish-Subcribe channel for coroutine communication.
+8. Semaphore and Waitgroup for coroutine synchronization.
+9. TLS/SSL non-block concurrent server support.
+10. Scheduler and be stopped by any coroutine, and continue running in main process.
+11. Multi-thread supported.
 
 ![DYCOARCH](./img/arch.png)
 
 There are still some future works:
-1. Support different platforms. This part can be referred to `jamwt/libtask` and `heiher/hev-task-system`.
+1. Better cross-platform support. Currently the cross-platform design is derive from `jamwt/libtask`. But only Linux OS is supported. Future work can be referred to `heiher/hev-task-system` and `tboox/tbox`.
 2. Discover more feature requests and bugs by getting more people to use them.
 3. Performance optimization. Using ucontext predestines the framework to not be the best at switching performance. But there is still room for optimization.
 4. Simpler build solution. Don't make things more complicated.
@@ -400,4 +401,4 @@ int dyco_SSL_write(SSL *ssl, const void *buf, int num);
 There are 3 mainstream ways to implement coroutine switch:
 - Assembly Instructions. This is faster than other ways, but some code should be written in assembly language for each platform.
 - `setjmp()`/`longjmp()`. They are faster than ucontext. But I personally think it is the most inappropriate method of implementing coroutine switch. `setjmp()`/`longjmp()` will loss the stack. To avoid this, you have to set stack pointer in the env_buf structure. This structure is totally different in each platform, so why not use assembly instructions?
-- ucontext. This method consists of 4 interfaces which are platform-independent, so the coroutine switch implementation code with ucontext is quite elegant. Unfortunately, **ucontext has been removed from POSIX**, because **the use of function declarators with empty parentheses (not prototype-format parameter type declarators) is an obsolescent feature**. It is still available in Linux, and won't bring problems for dyco. So I choose this method. For supporting more platforms, we can build ucontext in userspace, which can be referred to `jamwt/libtask`.
+- ucontext. This method consists of 4 interfaces which are platform-independent, so the coroutine switch implementation code with ucontext is quite elegant. Unfortunately, **ucontext has been removed from POSIX**, because **the use of function declarators with empty parentheses (not prototype-format parameter type declarators) is an obsolescent feature**. It is still available in Linux, and won't bring problems for dyco. So I choose this method. For supporting more platforms, dyco build ucontext in userspace, and this part is referred to `jamwt/libtask`.
