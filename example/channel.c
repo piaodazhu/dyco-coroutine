@@ -71,8 +71,6 @@ void bob(void *arg)
 
 int main()
 {
-	int i;
-
 	dyco_coroutine_create(alice, NULL);
 	dyco_coroutine_create(bob, NULL);
 	

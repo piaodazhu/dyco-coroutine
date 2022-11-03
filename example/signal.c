@@ -79,7 +79,6 @@ void wait_child(void *arg)
 
 int main()
 {
-	int i;
 	int sleeptime[10];
 	// dyco_coroutine_create(foobar, NULL);
 	dyco_coroutine_create(wait_interrupt, NULL);

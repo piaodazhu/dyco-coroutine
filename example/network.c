@@ -101,7 +101,7 @@ void redis(void *arg)
 
 		// del
 		char *del_ = "del Key";
-		reply = redisCommand(c, get_);
+		reply = redisCommand(c, del_);
 		if (reply != NULL && reply->type == REDIS_REPLY_STRING)
 		{
 			printf("%s\n", reply->str);
@@ -116,11 +116,6 @@ void redis(void *arg)
 void server_reader(void *arg) {
 	int fd = *(int *)arg;
 	int ret = 0;
-
- 
-	struct pollfd fds;
-	fds.fd = fd;
-	fds.events = POLLIN;
 
 	while (1) {
 		

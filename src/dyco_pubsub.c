@@ -222,6 +222,9 @@ ssize_t dyco_pubsub_subscribe(dyco_pubsubchannel *__pschan, void *__buf, size_t 
 		case PSC_STATUS_CLOSE:
 			ret = -1;
 			break;
+		default:
+			ret = -1;
+			break;
 	}
 	return ret;
 }

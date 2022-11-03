@@ -179,7 +179,7 @@ _schedule_cancel_wait(dyco_coroutine *co, int fd)
 {
 	if (co == NULL) return NULL;
 	
-	dyco_coroutine *c;
+	dyco_coroutine *c = NULL;
 	_htable_delete(&co->sched->fd_co_map, fd, (void**)&c);
 	CLRBIT(co->status, COROUTINE_FLAGS_WAITING);
 	assert(c != NULL);
@@ -209,19 +209,19 @@ _schedule_abort(dyco_schedule *__sched)
 {
 	// do some cleaning work
 	dyco_coroutine *co;
-	int cnt1 = 0, cnt2 = 0, cnt3 = __sched->coro_count;
+	// int cnt1 = 0, cnt2 = 0, cnt3 = __sched->coro_count;
 	while (!TAILQ_EMPTY(&__sched->ready))
 	{
 		co = TAILQ_FIRST(&__sched->ready);
 		TAILQ_REMOVE(&co->sched->ready, co, ready_next);
 		dyco_coroutine_free(co);
-		++cnt1;
+		// ++cnt1;
 	}
 	
 	while ((co = RB_MIN(_dyco_coroutine_rbtree_sleep, &__sched->sleeping)) != NULL) {
 		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
 		dyco_coroutine_free(co);
-		++cnt2;
+		// ++cnt2;
 	}
 	dyco_coroutine_free(__sched->curr_thread);
 	__sched->curr_thread = NULL;

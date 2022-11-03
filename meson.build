@@ -3,7 +3,7 @@ project(
 	'c',
 	version: 'v1.1.0',
 	license : 'GPLv3',
-	default_options: ['warning_level=0']
+	default_options: []
 )
 project_description = 'a dynamic coroutine framework for C'
 
@@ -41,7 +41,11 @@ project_source_files = [
 
 build_args = [
 	'-O3',
-	'-lpthread'
+	'-lpthread',
+	'-Wall',
+	'-Wno-unused-but-set-variable',
+	'-Wno-unused-variable',
+	'-Wno-unused-function'
 ]
 
 build_args += [

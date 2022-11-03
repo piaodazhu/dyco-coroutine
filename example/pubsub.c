@@ -49,7 +49,6 @@ void publisher(void *arg)
 }
 int main()
 {
-	int i;
 	int times[3] = {2, 5, 6};
 	dyco_coroutine_create(publisher, NULL);
 	dyco_coroutine_create(subscriber, times);
