@@ -39,11 +39,18 @@ _schedule_min_timeout(dyco_schedule *sched)
 static int 
 _schedule_epoll_wait(dyco_schedule *sched)
 {
-	if (!TAILQ_EMPTY(&sched->ready) || HTABLE_EMPTY(&sched->fd_co_map)) return 0;
+	if (HTABLE_EMPTY(&sched->fd_co_map)) return 0;
+
+	// fd-event-first policy
+	if (!TAILQ_EMPTY(&sched->ready))
+		return epoll_wait_f(sched->epollfd, sched->eventlist, DYCO_MAX_EVENTS, 0);
 
 	uint64_t timeout = _schedule_min_timeout(sched);
-	if (timeout == 0) return 0;
+	// if (timeout == 0) return 0;
 
+	// fd-event-first policy
+	if (timeout == 0)
+		return epoll_wait_f(sched->epollfd, sched->eventlist, DYCO_MAX_EVENTS, 0);
 	
 	int nready = -1;
 	while (1)
