@@ -322,6 +322,16 @@ int dyco_coroutine_setUdata(int cid, void *udata);
 int dyco_coroutine_getUdata(int cid, void **udata);
 int dyco_coroutine_getSchedCount(int cid);
 
+// int dyco_asymcoro_create(proc_coroutine func, void *arg);
+// int dyco_asymcoro_resume(int cid);
+// void dyco_asymcoro_yield();
+// void dyco_asymcoro_free(int cid);
+// int dyco_asymcoro_coroID();
+// int dyco_asymcoro_setStack(int cid, void *stackptr, size_t stacksize);
+// int dyco_asymcoro_getStack(int cid, void **stackptr, size_t *stacksize);
+// int dyco_asymcoro_setUdata(int cid, void *udata);
+// int dyco_asymcoro_getUdata(int cid, void **udata);
+
 dyco_coropool* dyco_coropool_create(int totalsize, size_t stacksize);
 dyco_coropool* dyco_coropool_resize(dyco_coropool* cp, int newsize);
 int dyco_coropool_destroy(dyco_coropool** cp);
