@@ -1,5 +1,3 @@
-#ifndef DYCO_SSL_H
-#define DYCO_SSL_H
 #include "dyco_coroutine.h"
 
 #ifdef DYCO_SSL_OK
@@ -106,6 +104,4 @@ label:
 }
 
 #endif
-#endif
-
 #endif

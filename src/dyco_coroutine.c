@@ -4,12 +4,14 @@ pthread_key_t global_sched_key;
 static pthread_once_t sched_key_once = PTHREAD_ONCE_INIT;
 
 static void 
-_sched_key_destructor(void *data) {
+_sched_key_destructor(void *data)
+{
 	free(data);
 }
 
 static void 
-_sched_key_creator(void) {
+_sched_key_creator(void)
+{
 	int ret;
 	ret = pthread_key_create(&global_sched_key, _sched_key_destructor);
 	assert(ret == 0);
@@ -19,16 +21,18 @@ _sched_key_creator(void) {
 }
 
 static void 
-_exec(void *lt) {
-	dyco_coroutine *co = (dyco_coroutine*)lt;
+_exec(void *c)
+{
+	dyco_coroutine *co = (dyco_coroutine*)c;
 	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
 	co->func(co->arg);
 	SETBIT(co->status, COROUTINE_STATUS_EXITED);
 	_yield(co);
 }
 
-void 
-_init_coro(dyco_coroutine *co) {
+static void 
+_init_coro(dyco_coroutine *co)
+{
 
 	getcontext(&co->ctx);
 	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK)) {
@@ -46,7 +50,8 @@ _init_coro(dyco_coroutine *co) {
 }
 
 void
-_save_stack(dyco_coroutine *co) {
+_save_stack(dyco_coroutine *co)
+{
 	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK))
 		return;
 
@@ -64,8 +69,9 @@ _save_stack(dyco_coroutine *co) {
 	return;
 }
 
-static void
-_load_stack(dyco_coroutine *co) {
+void
+_load_stack(dyco_coroutine *co)
+{
 	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK))
 		return;
 	
@@ -74,7 +80,8 @@ _load_stack(dyco_coroutine *co) {
 }
 
 void 
-_yield(dyco_coroutine *co) {
+_yield(dyco_coroutine *co)
+{
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED) == 0) {
 		_save_stack(co);
 	}
@@ -84,7 +91,8 @@ _yield(dyco_coroutine *co) {
 }
 
 int 
-_resume(dyco_coroutine *co) {
+_resume(dyco_coroutine *co)
+{
 	if (TESTBIT(co->status, COROUTINE_STATUS_NEW)) {
 		_init_coro(co);
 	}
@@ -158,8 +166,31 @@ _wait_events(int fd, unsigned int events, int timeout)
 }
 
 int 
-dyco_coroutine_create(proc_coroutine func, void *arg) {
+dyco_coroutine_create(proc_coroutine func, void *arg) 
+{
+	dyco_coroutine *co = dyco_coroutine_new();
+	if (co == NULL) {
+		printf("Failed to allocate memory for new coroutine\n");
+		return -2;
+	}
 
+	co->func = func;
+	co->arg = arg;
+	
+	if (func != NULL) {
+		TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
+
+		if (co->sched->status == SCHEDULE_STATUS_DONE) {
+			co->sched->status = SCHEDULE_STATUS_READY;
+		}
+	}
+	
+	return co->cid;
+}
+
+dyco_coroutine*
+dyco_coroutine_new()
+{
 	int ret = pthread_once(&sched_key_once, _sched_key_creator);
 	assert(ret == 0);
 	dyco_schedule *sched = _get_sched();
@@ -170,18 +201,15 @@ dyco_coroutine_create(proc_coroutine func, void *arg) {
 		sched = _get_sched();
 		if (sched == NULL) {
 			printf("Failed to create scheduler\n");
-			return -1;
+			return NULL;
 		}
 	}
 
 	dyco_coroutine *co = calloc(1, sizeof(dyco_coroutine));
 	if (co == NULL) {
 		printf("Failed to allocate memory for new coroutine\n");
-		return -2;
+		return NULL;
 	}
-
-	co->func = func;
-	co->arg = arg;
 
 	co->sched = sched;
 
@@ -206,17 +234,8 @@ dyco_coroutine_create(proc_coroutine func, void *arg) {
 
 	++sched->coro_count;
 	
-	if (func != NULL) {
-		TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
-
-		if (sched->status == SCHEDULE_STATUS_DONE) {
-			sched->status = SCHEDULE_STATUS_READY;
-		}
-	}
-	
-	return co->cid;
+	return co;
 }
-
 void 
 dyco_coroutine_free(dyco_coroutine *co) {
 	if (co == NULL)

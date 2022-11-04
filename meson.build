@@ -33,6 +33,7 @@ project_source_files = [
 	'src/dyco_socket.c',
 	'src/uctx_context.c',
 	'src/dyco_coroutine.c',
+	'src/dyco_asymcoro.c',
 	'src/dyco_pubsub.c',
 	'src/dyco_semaphore.c',
 	'src/dyco_ssl.c',

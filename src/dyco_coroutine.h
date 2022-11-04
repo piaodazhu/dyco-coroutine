@@ -142,7 +142,8 @@ typedef enum
 	COROUTINE_FLAGS_EXPIRED,
 	COROUTINE_FLAGS_IOMULTIPLEXING,
 	COROUTINE_FLAGS_WAITSIGNAL,
-	COROUTINE_FLAGS_INCOROPOOL
+	COROUTINE_FLAGS_INCOROPOOL,
+	COROUTINE_FLAGS_ASYMMETRIC
 } dyco_coroutine_status;
 
 struct _dyco_coroutine
@@ -154,6 +155,7 @@ struct _dyco_coroutine
 	// scheduler and context
 	dyco_schedule 		*sched;
 	ucontext_t		ctx;
+	ucontext_t		ret;
 
 	// coroutine stack
 	void 			*stack;
@@ -292,9 +294,13 @@ static inline int _coroutine_sleep_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
 // ------ 5. Inner Primes
 // User DO NOT use them. Use User APIs is enough in most case.
 // 5.1 coroutine
+// void _init_coro(dyco_coroutine *co);
+void _save_stack(dyco_coroutine *co);
+void _load_stack(dyco_coroutine *co);
 int _resume(dyco_coroutine *co);
 void _yield(dyco_coroutine *co);
 int _wait_events(int fd, unsigned int events, int timeout);
+dyco_coroutine* dyco_coroutine_new();
 void dyco_coroutine_free(dyco_coroutine *co);
 void dyco_coropool_return(dyco_coroutine *co);
 
@@ -322,15 +328,15 @@ int dyco_coroutine_setUdata(int cid, void *udata);
 int dyco_coroutine_getUdata(int cid, void **udata);
 int dyco_coroutine_getSchedCount(int cid);
 
-// int dyco_asymcoro_create(proc_coroutine func, void *arg);
-// int dyco_asymcoro_resume(int cid);
-// void dyco_asymcoro_yield();
-// void dyco_asymcoro_free(int cid);
-// int dyco_asymcoro_coroID();
-// int dyco_asymcoro_setStack(int cid, void *stackptr, size_t stacksize);
-// int dyco_asymcoro_getStack(int cid, void **stackptr, size_t *stacksize);
-// int dyco_asymcoro_setUdata(int cid, void *udata);
-// int dyco_asymcoro_getUdata(int cid, void **udata);
+int dyco_asymcoro_create(proc_coroutine func, void *arg);
+int dyco_asymcoro_resume(int cid);
+void dyco_asymcoro_yield();
+void dyco_asymcoro_free(int cid);
+int dyco_asymcoro_coroID();
+int dyco_asymcoro_setStack(int cid, void *stackptr, size_t stacksize);
+int dyco_asymcoro_getStack(int cid, void **stackptr, size_t *stacksize);
+int dyco_asymcoro_setUdata(int cid, void *udata);
+int dyco_asymcoro_getUdata(int cid, void **udata);
 
 dyco_coropool* dyco_coropool_create(int totalsize, size_t stacksize);
 dyco_coropool* dyco_coropool_resize(dyco_coropool* cp, int newsize);

@@ -1,6 +1,3 @@
-#ifndef _DYCO_SEMAPHORE_H
-#define _DYCO_SEMAPHORE_H
-
 #include "dyco_coroutine.h"
 
 void _sem_notify(int fd, eventfd_t data)
@@ -129,5 +126,3 @@ int dyco_semaphore_signal(dyco_semaphore *sem)
 	free(head);
 	return 0;
 }
-
-#endif

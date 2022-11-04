@@ -1,6 +1,3 @@
-#ifndef _DYCO_CHANNEL_H
-#define _DYCO_CHANNEL_H
-
 #include "dyco_coroutine.h"
 
 static void
@@ -246,5 +243,3 @@ dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __tim
 	}
 	return ret;
 }
-
-#endif

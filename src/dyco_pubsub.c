@@ -1,6 +1,3 @@
-#ifndef _DYCO_PUBSUB_CHANNEL_H
-#define _DYCO_PUBSUB_CHANNEL_H
-
 #include "dyco_coroutine.h"
 
 static void
@@ -228,5 +225,3 @@ ssize_t dyco_pubsub_subscribe(dyco_pubsubchannel *__pschan, void *__buf, size_t 
 	}
 	return ret;
 }
-
-#endif

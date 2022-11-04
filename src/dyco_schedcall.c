@@ -1,6 +1,3 @@
-#ifndef _DYCO_SCHEDCALL_H
-#define _DYCO_SCHEDCALL_H
-
 #include "dyco_coroutine.h"
 extern void _save_stack(dyco_coroutine *co);
 
@@ -121,5 +118,3 @@ void dyco_schedcall_abort()
 	
 	return;
 }
-
-#endif

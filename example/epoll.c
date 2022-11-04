@@ -168,8 +168,6 @@ void cofunc1(void *arg)
 
 int main()
 {
-	// init_hook();
-	dyco_coroutine *co1, *co2;
 	int id1 = 1, id2 = 2;
 	dyco_coroutine_create(cofunc0, &id1);
 	dyco_coroutine_create(cofunc1, &id2);

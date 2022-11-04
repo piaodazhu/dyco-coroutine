@@ -1,3 +1,11 @@
+example_coropool = executable(
+	'example_asymmetric',
+	'asymmetric.c',
+	include_directories : header_dir,
+	c_args : build_args,
+	link_with : libdyco
+)
+
 example_channel = executable(
 	'example_channel',
 	'channel.c',

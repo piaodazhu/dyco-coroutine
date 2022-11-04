@@ -1,6 +1,3 @@
-#ifndef _DYCO_SIGNAL_H
-#define _DYCO_SIGNAL_H
-
 #include "dyco_coroutine.h"
 
 int dyco_signal_waitchild(const pid_t child, int *status, int timeout)
@@ -126,5 +123,3 @@ int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout)
 
 	return read(co->sigfd, sinfo, sizeof(struct signalfd_siginfo));
 }
-
-#endif

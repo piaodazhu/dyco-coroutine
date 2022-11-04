@@ -1,6 +1,3 @@
-#ifndef _DYCO_EPOLL_H
-#define _DYCO_EPOLL_H
-
 #include "dyco_coroutine.h"
 
 int
@@ -222,7 +219,5 @@ poll(struct pollfd *fds, nfds_t nfds, int timeout)
 
 	return poll_f(fds, nfds, timeout);
 }
-
-#endif
 
 #endif

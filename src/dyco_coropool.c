@@ -1,6 +1,3 @@
-#ifndef DYCO_COROPOLL_H
-#define DYCO_COROPOLL_H
-
 #include "dyco_coroutine.h"
 
 #define dyco_coropool_available(cp)	((cp)->totalsize - (cp)->activenum)
@@ -254,7 +251,3 @@ dyco_coropool_return(dyco_coroutine *co)
 	}
 	return;
 }
-
-
-
-#endif
