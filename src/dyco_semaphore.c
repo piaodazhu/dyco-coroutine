@@ -9,6 +9,8 @@ dyco_semaphore* dyco_semaphore_create(size_t value)
 {
 	if (value == 0) return NULL;
 	dyco_semaphore *sem = (dyco_semaphore*)malloc(sizeof(dyco_semaphore));
+	if (sem == NULL)
+		return NULL;
 	sem->semval = value;
 	sem->wqueue = NULL;
 	sem->wtail = NULL;
@@ -63,8 +65,12 @@ int dyco_semaphore_wait(dyco_semaphore *sem, int timeout)
 	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	DYCO_MUSTNOT(notifyfd == -1);
 
 	dyco_semwait_node *wnode = (dyco_semwait_node*)malloc(sizeof(dyco_semwait_node));
+	if (wnode == NULL) {
+		return -1;
+	}
 	wnode->notifyfd = notifyfd;
 	wnode->next = NULL;
 

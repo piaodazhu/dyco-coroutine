@@ -53,18 +53,20 @@ dyco_channel*
 dyco_channel_create(size_t __size)
 {
 	dyco_channel *chan = (dyco_channel*)malloc(sizeof(dyco_channel));
+	if (chan == NULL)
+		return NULL;
 	chan->r_notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-	if (chan->r_notifyfd < 0) {
-		free(chan);
-		return NULL;
-	}
+	DYCO_MUSTNOT(chan->r_notifyfd == -1);
+
 	chan->w_notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-	if (chan->w_notifyfd < 0) {
-		free(chan);
-		return NULL;
-	}
+	DYCO_MUSTNOT(chan->w_notifyfd == -1);
+
 	chan->maxsize = __size > 0 ? __size : DYCO_DEFAULT_CHANNELSIZE;
 	chan->msg = malloc(chan->maxsize);
+	if (chan->msg == NULL) {
+		free(chan);
+		return NULL;
+	}
 	chan->msglen = 0;
 	chan->status = HDC_STATUS_EMPTY;
 	if (chan->msg == NULL) {
@@ -132,7 +134,7 @@ dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeou
 					ret = __size;
 					break;
 				case HDC_STATUS_FULL:
-					DYCO_ABORT();
+					DYCO_WARNIF(1, "channel is full.");
 					break;
 				case HDC_STATUS_WANTREAD:
 					__chan->msglen = __size;
@@ -192,7 +194,7 @@ dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __tim
 
 			switch(__chan->status) {
 				case HDC_STATUS_EMPTY:
-					DYCO_ABORT();
+					DYCO_WARNIF(1, "channel is empty.");
 					break;
 				case HDC_STATUS_FULL:
 					ret = __chan->msglen;

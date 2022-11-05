@@ -245,7 +245,7 @@ int dyco_schedule_run();
 
 // stack_size: shared stack memory size
 // loopwait_timeout: max delay (ms) of starting new coroutine
-// return 0 on success
+// return > 0 on success
 int dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout);
 
 void dyco_schedule_free(dyco_schedule *sched);

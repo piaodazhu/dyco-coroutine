@@ -53,19 +53,18 @@ _cp_wait(dyco_coropool* cp, int timeout)
 	}
 
 	dyco_schedule *sched = _get_sched();
-	if (sched == NULL) {
-		return -1;
-	}
+	DYCO_MUSTNOT(sched == NULL);
+
 	dyco_coroutine *co = sched->curr_thread;
-	if (co == NULL) {
-		return -1;
-	}
-	if (TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC)) {
-		return -1;
-	}
+	DYCO_MUSTNOT(co == NULL);
+	DYCO_MUSTNOT(TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	DYCO_MUSTNOT(notifyfd == -1);
+	
 	dyco_sublist *notify = (dyco_sublist*)malloc(sizeof(dyco_sublist));
+	if (notify == NULL)
+		return 0;
 	notify->notifyfd = notifyfd;
 	notify->next = NULL;
 	if (cp->sublist == NULL) cp->sublist = notify;
@@ -117,7 +116,8 @@ _cp_create(int totalsize, size_t stacksize, int isasymmetric)
 {
 	if (totalsize <= 0) return NULL;
 	dyco_coropool *cp = (dyco_coropool*)malloc(sizeof(dyco_coropool));
-	if (cp == NULL) return NULL;
+	if (cp == NULL) 
+		return NULL;
 	SLIST_INIT(&cp->freelist);
 	
 	int i, cid;
@@ -219,8 +219,7 @@ _cp_destroy(dyco_coropool** _cp, int isasymmetric)
 int
 _cp_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout, int isasymmetric)
 {
-	if (func == NULL) 
-		return -1;
+	DYCO_MUST(func != NULL);
 	
 	dyco_schedule *sched = _get_sched();
 	assert(sched != NULL);

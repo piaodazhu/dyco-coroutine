@@ -19,6 +19,7 @@ dyco_epoll_init()
 		return -1;
 	}
 	co->epollfd = epoll_create(1024);
+	DYCO_MUSTNOT(co->epollfd == -1);
 	SETBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING);
 
 	return 0;
@@ -195,6 +196,8 @@ poll(struct pollfd *fds, nfds_t nfds, int timeout)
 	struct epoll_event ev;
 
 	int epfd = epoll_create(nfds);
+	DYCO_MUSTNOT(epfd == -1);
+
 	int i, ret;
 	for (i = 0; i < nfds; i++) {
 		ev.events = fds[i].events;

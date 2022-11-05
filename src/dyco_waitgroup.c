@@ -152,8 +152,12 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 			return __group->finished;
 		
 		int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+		DYCO_MUSTNOT(notifyfd == -1);
 
 		dyco_sublist* sub = (dyco_sublist*)malloc(sizeof(dyco_sublist));
+		if (sub == NULL) {
+			return -1;
+		}
 		sub->notifyfd = notifyfd;
 		sub->next = NULL;
 
@@ -203,8 +207,11 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 			return __target;
 		
 		int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+		DYCO_MUSTNOT(notifyfd == -1);
 
 		dyco_sublist* sub = (dyco_sublist*)malloc(sizeof(dyco_sublist));
+		if (sub == NULL) 
+			return -1;
 		sub->notifyfd = notifyfd;
 		sub->next = NULL;
 

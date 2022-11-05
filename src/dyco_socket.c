@@ -9,7 +9,7 @@ dyco_socket(int domain, int type, int protocol)
 {
 	int fd = socket_f(domain, type, protocol);
 	if (fd == -1) {
-		printf("Failed to create a new socket\n");
+		// printf("Failed to create a new socket\n");
 		return -1;
 	}
 	int ret = fcntl(fd, F_SETFL, O_NONBLOCK);
@@ -41,11 +41,11 @@ dyco_accept(int fd, struct sockaddr *addr, socklen_t *len)
 			}
 			else if (errno == ECONNABORTED)
 			{
-				printf("accept : ECONNABORTED\n");
+				// printf("accept : ECONNABORTED\n");
 			}
 			else if (errno == EMFILE || errno == ENFILE)
 			{
-				printf("accept : EMFILE || ENFILE\n");
+				// printf("accept : EMFILE || ENFILE\n");
 			}
 			return -1;
 		}
@@ -147,7 +147,7 @@ dyco_send(int fd, const void *buf, size_t len, int flags)
 				return ret;
 			}
 			else {
-				printf("send() errno : %d, ret : %d\n", errno, ret);
+				// printf("send() errno : %d, ret : %d\n", errno, ret);
 				break;
 			}
 		}
@@ -187,7 +187,7 @@ dyco_sendto(int fd, const void *buf, size_t len, int flags,
 				return ret;
 			}
 			else {
-				printf("sendto() errno : %d, ret : %d\n", errno, ret);
+				// printf("sendto() errno : %d, ret : %d\n", errno, ret);
 				break;
 			}
 		}
@@ -214,7 +214,7 @@ socket(int domain, int type, int protocol)
 	int fd = socket_f(domain, type, protocol);
 	if (fd == -1)
 	{
-		printf("Failed to create a new socket\n");
+		// printf("Failed to create a new socket\n");
 		return -1;
 	}
 	int ret = fcntl(fd, F_SETFL, O_NONBLOCK);
@@ -248,11 +248,11 @@ accept(int fd, struct sockaddr *addr, socklen_t *len)
 			}
 			else if (errno == ECONNABORTED)
 			{
-				printf("accept : ECONNABORTED\n");
+				// printf("accept : ECONNABORTED\n");
 			}
 			else if (errno == EMFILE || errno == ENFILE)
 			{
-				printf("accept : EMFILE || ENFILE\n");
+				// printf("accept : EMFILE || ENFILE\n");
 			}
 			return -1;
 		}
@@ -354,7 +354,7 @@ send(int fd, const void *buf, size_t len, int flags)
 				return ret;
 			}
 			else {
-				printf("send() errno : %d, ret : %d\n", errno, ret);
+				// printf("send() errno : %d, ret : %d\n", errno, ret);
 				break;
 			}
 		}
@@ -394,7 +394,7 @@ sendto(int fd, const void *buf, size_t len, int flags,
 				return ret;
 			}
 			else {
-				printf("sendto() errno : %d, ret : %d\n", errno, ret);
+				// printf("sendto() errno : %d, ret : %d\n", errno, ret);
 				break;
 			}
 		}

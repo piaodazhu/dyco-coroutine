@@ -143,13 +143,11 @@ _waitev(int fd, unsigned int events, int timeout)
 	}
 
 	dyco_schedule *sched = _get_sched();
-	if (sched == NULL) {
-		return -1;
-	}
+	DYCO_MUST(sched != NULL);
 	dyco_coroutine *co = sched->curr_thread;
-	if (co == NULL) {
-		return -1;
-	}
+	DYCO_MUST(co != NULL);
+	DYCO_MUSTNOT(TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
+	
 	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 	
 	struct epoll_event ev;
@@ -185,9 +183,9 @@ dyco_coroutine_create(proc_coroutine func, void *arg)
 	// co->cid = sched->_cid_gen++;
 	sched->_cid_gen = (sched->_cid_gen + 1) & 0xffffff;
 	co->cid = ((sched->sched_id & 0xff) << 24) | sched->_cid_gen;
-	
+
 	int ret = _htable_insert(&sched->cid_co_map, co->cid, co);
-	assert(ret >= 0);
+	DYCO_MUST(ret >= 0);
 	++sched->coro_count;
 	
 	TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
@@ -202,7 +200,7 @@ dyco_coroutine*
 _newcoro()
 {
 	int ret = pthread_once(&sched_key_once, _sched_key_creator);
-	assert(ret == 0);
+	DYCO_MUST(ret == 0);
 	dyco_schedule *sched = _get_sched();
 
 	if (sched == NULL) {
@@ -267,13 +265,11 @@ _freecoro(dyco_coroutine *co) {
 void 
 dyco_coroutine_sleep(uint32_t msecs) {
 	dyco_schedule *sched = _get_sched();
-	if (sched == NULL) {
-		return;
-	}
+	DYCO_MUST(sched != NULL);
 	dyco_coroutine *co = sched->curr_thread;
-	if (co == NULL) {
-		return;
-	}
+	DYCO_MUST(co != NULL);
+	DYCO_MUSTNOT(TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
+
 	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	if (msecs == 0) {

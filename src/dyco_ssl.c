@@ -49,7 +49,6 @@ label:
 		else 
 			return -1;
 	}
-	printf("SSL_connect success\n");
 	return 1;
 }
 

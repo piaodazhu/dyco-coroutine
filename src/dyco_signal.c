@@ -22,6 +22,7 @@ int dyco_signal_waitchild(const pid_t child, int *status, int timeout)
 	sigaddset(&sigmask, SIGCHLD);
 	dyco_schedcall_sigprocmask(SIG_BLOCK, &sigmask, &co->old_sigmask);
 	int sigfd = signalfd(-1, &sigmask, SFD_NONBLOCK);
+	DYCO_MUSTNOT(sigfd == -1);
 
 	struct epoll_event ev;
 	ev.data.fd = sigfd;
@@ -58,6 +59,8 @@ int dyco_signal_init(sigset_t *mask)
 	}
 	dyco_schedcall_sigprocmask(SIG_BLOCK, mask, &co->old_sigmask);
 	int sigfd = signalfd(-1, mask, SFD_NONBLOCK);
+	DYCO_MUSTNOT(sigfd == -1);
+	
 	co->sigfd = sigfd;
 	SETBIT(co->status, COROUTINE_FLAGS_WAITSIGNAL);
 

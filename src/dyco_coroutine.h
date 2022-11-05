@@ -265,13 +265,17 @@ struct _semaphore {
 						printf("[?] condition is not met in %s:%s:%d\n", __FILE__, __FUNCTION__, __LINE__); \
 						exit(1); \
 					}
+#define DYCO_MUSTNOT(logic) 		if ((logic)) { \
+						printf("[?] condition is not met in %s:%s:%d\n", __FILE__, __FUNCTION__, __LINE__); \
+						exit(1); \
+					}
 #define DYCO_WARNIF(logic, msg) 	if ((logic)) { \
 						printf("[!] warning in %s:%s:%d: %s\n", __FILE__, __FUNCTION__, __LINE__, msg); \
 					}
 
 extern pthread_key_t global_sched_key;
 
-static inline dyco_schedule *_get_sched(void)
+static inline dyco_schedule *_get_sched()
 {
 	return pthread_getspecific(global_sched_key);
 }
@@ -286,7 +290,7 @@ static inline int _tv_ms(struct timeval *tv)
 	return tv->tv_sec * 1000 + tv->tv_usec/1000;
 }
 
-static inline uint64_t _usec_now(void)
+static inline uint64_t _usec_now()
 {
 	struct timeval t1 = {0, 0};
 	gettimeofday(&t1, NULL);

@@ -37,8 +37,12 @@ _psc_subwait(dyco_pubsubchannel* pschan, int timeout)
 	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	DYCO_MUSTNOT(notifyfd == -1);
+
 	dyco_sublist *sublist = pschan->sublist;
 	dyco_sublist *subnode = (dyco_sublist*)malloc(sizeof(dyco_sublist));
+	if (subnode == NULL)
+		return PSC_STATUS_NOP;
 	subnode->notifyfd = notifyfd;
 	subnode->next = sublist;
 	pschan->sublist = subnode;
@@ -110,6 +114,8 @@ _psc_pubwait(dyco_pubsubchannel* pschan, int timeout)
 	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	pschan->pub_notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	DYCO_MUSTNOT(pschan->pub_notifyfd == -1);
+
 	struct epoll_event ev;
 	ev.data.fd = pschan->pub_notifyfd;
 	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;

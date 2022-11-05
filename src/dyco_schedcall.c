@@ -57,9 +57,9 @@ int dyco_schedcall_sigprocmask(int __how, sigset_t *__set, sigset_t *__oset)
 
 	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
 	SETBIT(co->status, COROUTINE_STATUS_SCHEDCALL);
-	printf("call start\n");
+
 	swapcontext(&co->ctx, &co->sched->ctx);
-	printf("call back\n");
+
 	CLRBIT(co->status, COROUTINE_STATUS_SCHEDCALL);
 	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
 	

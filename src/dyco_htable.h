@@ -42,6 +42,8 @@ static dyco_htable*
 _htable_create(int width)
 {
 	dyco_htable *ht = (dyco_htable*)malloc(sizeof(dyco_htable));
+	if (ht == NULL)
+		return NULL;
 	_htable_init(ht, width);
 	return ht;
 }
@@ -59,6 +61,9 @@ _htable_init(dyco_htable *ht, int width)
 	ht->_mask = sz - 1;
 	ht->_count = 0;
 	ht->_table = (dyco_hentry*)calloc(sz, sizeof(dyco_hentry));
+	if (ht->_table == NULL) {
+		return -1;
+	}
 	int i;
 	for (i = 0; i < sz; i++) {
 		ht->_table[i].id = -1;
@@ -147,6 +152,9 @@ _htable_insert(dyco_htable *htable, int id, void *data)
 		ptr = ptr->next;
 	}
 	dyco_hentry *newnode = (dyco_hentry*)malloc(sizeof(dyco_hentry));
+	if (newnode == NULL) {
+		return -1;
+	}
 	newnode->id = id;
 	newnode->data = data;
 	newnode->next = bucket->next;
@@ -288,6 +296,10 @@ _htable_resize(dyco_htable *htable, int width)
 	int _newsize = (1 << width);
 	int _newmask = _newsize - 1;
 	dyco_hentry* _newtable = (dyco_hentry*)calloc(_newsize, sizeof(dyco_hentry));
+	if (_newtable == NULL) {
+		return -1;
+	}
+	
 	int i;
 	for (i = 0; i < _newsize; i++) {
 		_newtable->id = -1;
@@ -310,6 +322,8 @@ _htable_resize(dyco_htable *htable, int width)
 			_newtable[_newidx].data = _oldtable[i].data;
 		} else {
 			newnode = (dyco_hentry*)malloc(sizeof(dyco_hentry));
+			if (newnode == NULL)
+				return -1;
 			newnode->id = _oldtable[i].id;
 			newnode->data = _oldtable[i].data;
 			newnode->next = _newtable[_newidx].next;
