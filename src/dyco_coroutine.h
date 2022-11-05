@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdatomic.h>
 
 #include <sys/time.h>
 #include <sys/poll.h>
@@ -94,7 +95,7 @@ struct _dyco_schedule
 	size_t			stack_size;
 
 	// static info
-	int			sched_id;
+	unsigned int		sched_id;
 	uint64_t		loopwait_timeout;
 	uint64_t		birth;
 

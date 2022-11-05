@@ -10,6 +10,33 @@ _get_coro_by_cid(int cid)
 	return _htable_find(&sched->cid_co_map, cid);
 }
 
+int
+_coro_setstack(dyco_coroutine *co, void *stackptr, size_t stacksize)
+{
+	if ((co == NULL) || (!TESTBIT(co->status, COROUTINE_STATUS_NEW))) {
+		return -1;
+	}
+	if (stacksize == 0) {
+		co->stack = NULL;
+		co->stack_size = 0;
+		CLRBIT(co->status, COROUTINE_FLAGS_OWNSTACK);
+		return 0;
+	}
+	if (stackptr == NULL) {
+		int page_size = getpagesize();
+		co->stack_size = stacksize + stacksize % page_size;
+		int ret = posix_memalign(&co->stack, page_size, co->stack_size);
+		assert(ret == 0);
+		SETBIT(co->status, COROUTINE_FLAGS_OWNSTACK);
+		SETBIT(co->status, COROUTINE_FLAGS_ALLOCSTACKMEM);
+		return 1;
+	}
+	co->stack = stackptr;
+	co->stack_size = stacksize;
+	SETBIT(co->status, COROUTINE_FLAGS_OWNSTACK);
+	return 1;
+}
+
 static void
 _cp_notify(int fd)
 {
@@ -96,16 +123,13 @@ _cp_create(int totalsize, size_t stacksize, int isasymmetric)
 	int i, cid;
 	dyco_coroutine *cur;
 	for (i = 0; i < totalsize; ++i) {
+		cur = _newcoro();
 		if (isasymmetric != 0)
-			cid = dyco_coroutine_create(NULL, NULL);
-		else
-			cid = dyco_asymcoro_create(NULL, NULL);
-		assert(cid >= 0);
+			SETBIT(cur->status, COROUTINE_FLAGS_ASYMMETRIC);
 
 		if (isasymmetric != 0 || stacksize > 0)
-			dyco_coroutine_setStack(cid, NULL, stacksize);
-		
-		cur = _get_coro_by_cid(cid);
+			_coro_setstack(cur, NULL, stacksize);
+
 		SLIST_INSERT_HEAD(&cp->freelist, cur, cpool_next);
 		SETBIT(cur->status, COROUTINE_FLAGS_INCOROPOOL);
 		cur->cpool = cp;
@@ -131,16 +155,13 @@ _cp_resize(dyco_coropool* cp, int newsize, int isasymmetric)
 	if (cp->totalsize < newsize) {
 		// increase coros
 		for (i = cp->totalsize; i < newsize; ++i) {
+			cur = _newcoro();
 			if (isasymmetric != 0)
-				cid = dyco_coroutine_create(NULL, NULL);
-			else
-				cid = dyco_asymcoro_create(NULL, NULL);
-			assert(cid >= 0);
+				SETBIT(cur->status, COROUTINE_FLAGS_ASYMMETRIC);
 
 			if (isasymmetric != 0 || cp->stacksize > 0)
-				dyco_coroutine_setStack(cid, NULL, cp->stacksize);
+				_coro_setstack(cur, NULL, cp->stacksize );
 			
-			cur = _get_coro_by_cid(cid);
 			SLIST_INSERT_HEAD(&cp->freelist, cur, cpool_next);
 			SETBIT(cur->status, COROUTINE_FLAGS_INCOROPOOL);
 			cur->cpool = cp;
@@ -201,6 +222,9 @@ _cp_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout, int i
 	if (func == NULL) 
 		return -1;
 	
+	dyco_schedule *sched = _get_sched();
+	assert(sched != NULL);
+
 	int ret = _cp_wait(cp, timeout);
 	if (ret <= 0) {
 		return ret;
@@ -229,10 +253,18 @@ _cp_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout, int i
 	co->epollfd = -1;
 	co->sigfd = -1;
 
+	co->sched = sched;
+	// co->cid = sched->_cid_gen++;
+	sched->_cid_gen = (sched->_cid_gen + 1) & 0xffffff;
+	co->cid = ((sched->sched_id & 0xff) << 24) | sched->_cid_gen;
+	ret = _htable_insert(&sched->cid_co_map, co->cid, co);
+	assert(ret >= 0);
+	++sched->coro_count;
+
 	if (isasymmetric == 0) {
-		TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
-		if (co->sched->status == SCHEDULE_STATUS_DONE) {
-			co->sched->status = SCHEDULE_STATUS_READY;
+		TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
+		if (sched->status == SCHEDULE_STATUS_DONE) {
+			sched->status = SCHEDULE_STATUS_READY;
 		}
 	}
 
@@ -250,6 +282,9 @@ _cp_return(dyco_coroutine *co, int isasymmetric)
 	if (cp == NULL) {
 		return;
 	}
+
+	--co->sched->coro_count;
+	_htable_delete(&co->sched->cid_co_map, co->cid, NULL);
 
 	if (TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
 		_schedule_cancel_wait(co, co->epollfd);

@@ -54,8 +54,18 @@ dyco_asymcoro_create(proc_coroutine func, void *arg)
 	co->func = func;
 	co->arg = arg;
 	SETBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC);
-	
+
+	dyco_schedule *sched = _get_sched();
+	co->sched = sched;
+	// co->cid = sched->_cid_gen++;
+	sched->_cid_gen = (sched->_cid_gen + 1) & 0xffffff;
+	co->cid = ((sched->sched_id & 0xff) << 24) | sched->_cid_gen;
+	int ret = _htable_insert(&sched->cid_co_map, co->cid, co);
+	assert(ret >= 0);
+	++sched->coro_count;
 	return co->cid;
+	
+	return 0;
 }
 
 

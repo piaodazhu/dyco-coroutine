@@ -1,4 +1,5 @@
 #include "dyco_coroutine.h"
+atomic_uint sched_id_gen;
 
 RB_GENERATE(_dyco_coroutine_rbtree_sleep, _dyco_coroutine, sleep_node, _coroutine_sleep_cmp);
 
@@ -122,11 +123,13 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 	assert(ret == 0);
 
 	pthread_t tid = pthread_self();
-	sched->sched_id = (int)(tid % INT_MAX);
+	sched->sched_id = ++sched_id_gen;
 	sched->loopwait_timeout = loopwait_timeout ? loopwait_timeout : DYCO_DEFAULT_TIMEOUT;
 	sched->birth = _usec_now();
 	sched->coro_count = 0;
-	sched->_cid_gen = 1;
+	// sched->_cid_gen = (sched->sched_id % 0xf0) * 1000000;
+	sched->_cid_gen = 0;
+	// sched->_cid_gen
 	sched->status = SCHEDULE_STATUS_READY;
 	sched->curr_thread = NULL;
 
@@ -311,7 +314,7 @@ dyco_schedule_schedID()
 	if (sched == NULL) {
 		return -1;
 	}
-	return sched->sched_id;
+	return (int)sched->sched_id;
 }
 
 int

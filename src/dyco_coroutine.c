@@ -180,14 +180,21 @@ dyco_coroutine_create(proc_coroutine func, void *arg)
 	co->func = func;
 	co->arg = arg;
 	
-	if (func != NULL) {
-		TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
-
-		if (co->sched->status == SCHEDULE_STATUS_DONE) {
-			co->sched->status = SCHEDULE_STATUS_READY;
-		}
-	}
+	dyco_schedule *sched = _get_sched();
+	co->sched = sched;
+	// co->cid = sched->_cid_gen++;
+	sched->_cid_gen = (sched->_cid_gen + 1) & 0xffffff;
+	co->cid = ((sched->sched_id & 0xff) << 24) | sched->_cid_gen;
 	
+	int ret = _htable_insert(&sched->cid_co_map, co->cid, co);
+	assert(ret >= 0);
+	++sched->coro_count;
+	
+	TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
+
+	if (co->sched->status == SCHEDULE_STATUS_DONE) {
+		co->sched->status = SCHEDULE_STATUS_READY;
+	}
 	return co->cid;
 }
 
@@ -214,8 +221,6 @@ _newcoro()
 		return NULL;
 	}
 
-	co->sched = sched;
-
 	co->stack = NULL;
 	co->stack_size = 0;
 	
@@ -223,19 +228,12 @@ _newcoro()
 	co->sched_count = 0;
 	co->sleep_usecs = 0;
 
-	if (sched->_cid_gen == INT_MAX) sched->_cid_gen = 0;
-	co->cid = sched->_cid_gen++;
-	ret = _htable_insert(&sched->cid_co_map, co->cid, co);
-	assert(ret >= 0);
-
 	co->cpool = NULL;
 
 	co->udata = NULL;
 
 	co->epollfd = -1;
 	co->sigfd = -1;
-
-	++sched->coro_count;
 	
 	return co;
 }

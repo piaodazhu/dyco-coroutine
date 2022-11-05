@@ -40,7 +40,7 @@ int main()
 
 	// shared stack coroutines pool
 	pool2 = dyco_coropool_create(2, 0);
-	
+
 	int ret;
 	ret = dyco_coropool_obtain(pool1, corofunc1, NULL, 3000);
 	printf("1: ret = %d\n", ret);
