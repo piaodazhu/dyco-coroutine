@@ -1,4 +1,5 @@
 #include "dyco_coroutine.h"
+
 atomic_uint sched_id_gen;
 
 RB_GENERATE(_dyco_coroutine_rbtree_sleep, _dyco_coroutine, sleep_node, _coroutine_sleep_cmp);
@@ -6,6 +7,9 @@ RB_GENERATE(_dyco_coroutine_rbtree_sleep, _dyco_coroutine, sleep_node, _coroutin
 #define SCHEDULE_ISDONE(sched)		(HTABLE_EMPTY(&sched->fd_co_map) && \
 				 	RB_EMPTY(&sched->sleeping) && \
 				 	TAILQ_EMPTY(&sched->ready))
+
+extern void dyco_coropool_return(dyco_coroutine *co);
+
 static dyco_coroutine*
 _schedule_get_expired(dyco_schedule *sched)
 {
@@ -214,26 +218,26 @@ _schedule_stop(dyco_schedule *__sched)
 }
 
 
-void
-_schedule_abort(dyco_schedule *__sched)
+static void _coro_abort(void *arg)
 {
-	// do some cleaning work
-	dyco_coroutine *co;
-	// int cnt1 = 0, cnt2 = 0, cnt3 = __sched->coro_count;
-	while (!TAILQ_EMPTY(&__sched->ready))
-	{
-		co = TAILQ_FIRST(&__sched->ready);
-		TAILQ_REMOVE(&co->sched->ready, co, ready_next);
-		_freecoro(co);
-		// ++cnt1;
+	dyco_coroutine *co = arg;
+	if (TESTBIT(co->status, COROUTINE_FLAGS_INCOROPOOL)) {
+		if (TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC))
+			dyco_asymcpool_return(co->cid);
+		else
+			dyco_coropool_return(co);
+	} else {
+		if (TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC))
+			dyco_asymcoro_free(co->cid);
+		else
+			_freecoro(co);
 	}
-	
-	while ((co = RB_MIN(_dyco_coroutine_rbtree_sleep, &__sched->sleeping)) != NULL) {
-		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
-		_freecoro(co);
-		// ++cnt2;
-	}
-	_freecoro(__sched->curr_thread);
+	return;
+}
+void
+_schedule_abort(dyco_schedule *__sched) // map!
+{
+	_htable_clear_with_freecb(&__sched->cid_co_map, _coro_abort);
 	__sched->curr_thread = NULL;
 	assert(__sched->coro_count == 0);
 	__sched->status = SCHEDULE_STATUS_ABORTED;
