@@ -51,12 +51,17 @@ dyco_asymcoro_resume(int cid)
 	if (sched == NULL) {
 		return -1;
 	}
+	dyco_coroutine *co_prev = sched->curr_thread;
 	dyco_coroutine *co_next = _htable_find(&sched->cid_co_map, cid);
 	if ((co_next == NULL) || (!TESTBIT(co_next->status, COROUTINE_FLAGS_ASYMMETRIC))) {
 		return -1;
 	}
 	if (TESTBIT(co_next->status, COROUTINE_STATUS_EXITED)) {
 		return 0;
+	}
+
+	if (co_prev != NULL && !TESTBIT(co_next->status, COROUTINE_FLAGS_OWNSTACK)) {
+		dyco_asymcoro_setStack(cid, NULL, DYCO_MAX_STACKSIZE);
 	}
 
 	if (TESTBIT(co_next->status, COROUTINE_STATUS_NEW)) {
@@ -66,18 +71,13 @@ dyco_asymcoro_resume(int cid)
 	}
 
 	++co_next->sched_count;
-
-	dyco_coroutine *co_prev = sched->curr_thread;
+	
 	sched->curr_thread = co_next;
 	SETBIT(co_next->status, COROUTINE_STATUS_RUNNING);
 	swapcontext(&co_next->ret, &co_next->ctx);
 	sched->curr_thread = co_prev;
 
 	if (TESTBIT(co_next->status, COROUTINE_STATUS_EXITED)) {
-		// if (TESTBIT(co_next->status, COROUTINE_FLAGS_INCOROPOOL))
-		// 	dyco_coropool_return(co_next);
-		// else
-		// 	dyco_coroutine_free(co_next);
 		return 0;
 	}
 	return cid;
