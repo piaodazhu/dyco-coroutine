@@ -34,6 +34,7 @@ _psc_subwait(dyco_pubsubchannel* pschan, int timeout)
 	if (co == NULL) {
 		return pschan->status;
 	}
+	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 	dyco_sublist *sublist = pschan->sublist;
@@ -106,6 +107,7 @@ _psc_pubwait(dyco_pubsubchannel* pschan, int timeout)
 	if (co == NULL) {
 		return pschan->status;
 	}
+	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	pschan->pub_notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 	struct epoll_event ev;

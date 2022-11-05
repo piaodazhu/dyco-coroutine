@@ -60,6 +60,7 @@ int dyco_semaphore_wait(dyco_semaphore *sem, int timeout)
 	if (co == NULL) {
 		return -1;
 	}
+	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 

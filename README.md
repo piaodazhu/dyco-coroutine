@@ -24,6 +24,7 @@ Features of dyco-coroutine:
 9. TLS/SSL non-block concurrent server support.
 10. Scheduler and be stopped by any coroutine, and continue running in main process.
 11. Multi-thread supported.
+12. Asymmetric coroutine is supported.
 
 ![DYCOARCH](./img/arch.png)
 
@@ -423,6 +424,64 @@ int dyco_SSL_read(SSL *ssl, void *buf, int num);
 
 // see SSL_write
 int dyco_SSL_write(SSL *ssl, const void *buf, int num);
+```
+
+## Asymmetric Coroutine & Asymmetric Coroutines Pool
+
+Asymmetric coroutine is also supported, althougth in most case symmetric coroutine is more user-friendly than asymmetric coroutine. There are 2 specific API for asymmetric coroutine: `resume` and `yield`. A asymmetric coroutine can be create in main process or inside any coroutine. **Note that it won't be scheduled by dyco scheduler**. To start the coroutine, you should call `resume` with its `cid`. And inside this coroutines, you can call `yield` to go back to the context where `resume` was called. `resume` will return 0 if the asymmetric coroutine finish. Then you should free this coroutine manually by call `dyco_asymcoro_free`.
+
+Since asymmetric coroutine is not scheduled by dyco scheduler, **all features mentioned before is not supported to asymmetric coroutine**.
+
+`setStack` is **optional**. If a asymmetric coroutine need to be resumed inside a symmetric coroutine, you **must** set a independent stack for this asymmetric coroutine.
+
+See more in `example/asymmetric_example.c`.
+
+**Asymmetric Coroutines Pool** is provided to avoid create and release coroutine/stack memory frequently. The asymmetric coroutines pool can be create at any time and be resized after it created. Asymmetric coroutines who belongs to a asymmetric corotines pool **will not** automatically return to the pool after user function finishes. By calling `obtain`, you can get a free coroutine from the pool. Then by calling `return`, you can return a finished coroutine to the pool.
+
+```c
+// return 1 if the coroutine is asymmetric, 0 if symmetric
+int dyco_coroutine_isasymmetric(int cid);
+
+// return the coroutine ID on success, < 0 on error
+int dyco_asymcoro_create(proc_coroutine func, void *arg);
+
+// return cid on coroutine yield, 0 on coroutine finish, < 0 on error
+int dyco_asymcoro_resume(int cid);
+
+// interupt and go back
+void dyco_asymcoro_yield();
+
+void dyco_asymcoro_free(int cid);
+
+// return ID of current coroutine
+int dyco_asymcoro_coroID();
+
+// stacksize: 0 to cancel independent stack
+// return 1 on successfully set, 0 on successfully cancel, < 0 on error
+int dyco_asymcoro_setStack(int cid, void *stackptr, size_t stacksize);
+int dyco_asymcoro_getStack(int cid, void **stackptr, size_t *stacksize);
+
+// return 0 on success
+int dyco_asymcoro_setUdata(int cid, void *udata);
+int dyco_asymcoro_getUdata(int cid, void **udata);
+
+// return NULL on error
+dyco_coropool* dyco_asymcpool_create(int totalsize, size_t stacksize);
+dyco_coropool* dyco_asymcpool_resize(dyco_coropool* cp, int newsize);
+
+// return 0 on success
+int dyco_asymcpool_destroy(dyco_coropool** cp);
+
+// return number of available coroutine in this pool
+int dyco_asymcpool_available(dyco_coropool* cp);
+
+// obtain a coroutine from the pool. 
+// If there is no free coroutine, wait timeout
+// return 0 on timeout, -1 on error, > 0 on success
+int dyco_asymcpool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
+
+// return a finished coroutine to the pool
+void dyco_asymcpool_return(int cid);
 ```
 
 # About Coroutine

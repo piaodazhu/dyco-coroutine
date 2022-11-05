@@ -37,6 +37,7 @@ dyco_epoll_wait(struct epoll_event *__events, int __maxevents, int __timeout)
 		perror("ERROR: dyco_epoll_* can only be called inside coroutine functions!");
 		return -1;
 	}
+	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 	if (!TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
 		perror("ERROR: 4dyco_epoll_init haven't been called!");
 		ABORT();
@@ -156,6 +157,7 @@ epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 	if (co == NULL) {
 		return -1;
 	}
+	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	struct epoll_event ev;
 	ev.data.fd = epfd;
@@ -188,6 +190,7 @@ poll(struct pollfd *fds, nfds_t nfds, int timeout)
 	if (co == NULL) {
 		return -1;
 	}
+	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	struct epoll_event ev;
 

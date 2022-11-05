@@ -1,3 +1,13 @@
+## 2022-11-5: v1.2.0 released!
+
+Updates:
+1. Support Asymmetric Coroutine & Asymmetric Coroutines Pool for manually schedualing.
+2. Adjust scheduler loop policy for better event reaction.
+3. Better multi-platform support.
+3. Support Meson build.
+4. Fix some bugs.
+5. Improve the documents. Bring some new plans in future works.
+
 ## 2022-10-29: v1.1.0 released!
 
 Updates:

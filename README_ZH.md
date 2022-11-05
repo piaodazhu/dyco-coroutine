@@ -24,6 +24,7 @@
 9. 支持非阻塞的TLS/SSL并发服务。
 10. 调度器及其管理的协程可以被暂停，然后在适当的时机恢复。
 11. 支持多线程。
+12. 支持非对称协程。
 
 ![DYCOARCH](./img/arch.png)
 
@@ -443,6 +444,64 @@ int dyco_SSL_read(SSL *ssl, void *buf, int num);
 
 // see SSL_write
 int dyco_SSL_write(SSL *ssl, const void *buf, int num);
+```
+
+## Asymmetric Coroutine & Asymmetric Coroutines Pool
+
+dyco也支持非对称协程，尽管在大多数情况下对称协程比非对称协程更好用。非对称协程有两个专门的API：`resume`和`yield`。一个非对称协程可以在主程序或者任意一个协程内部创建。**需要注意的是，非对称协程不会被dyco调度器调度**。要启动这个协程，你应该带上它的`cid`去调用`resume`。在这个协程函数里面，可以通过调用`yield`来返回调用`resume`的上下文。如果协程函数执行完毕，`resume`会返回0。这时需要手动调用`dyco_asymcoro_free`来释放这个非对称协程。
+
+由于非对称协程不会被dyco调度器调度，**因此前面提到的所有特性都不支持非对称协程**。
+
+`setStack`是**可选的**。如果一个非对称协程需要在一个对程协程内被唤起执行，你**必须**确保这个非对称协程具有独立栈。
+
+详见`example/asymmetric_example.c`。
+
+dyco也提供了**非对称协程池**来防止频繁地创建释放非对称协程和栈的内存空间。任何时候都可以创建非对称协程池，创建完成后可以修改协程池的大小。非对称协程池中的协程在用户函数执行完成后**不会**自动归还到协程池。通过调用`obtain`，你可以从协程池中获得一个空闲协程。通过调用`return`，你可以将一个执行完成的协程归还到协程池。
+
+```c
+// return 1 if the coroutine is asymmetric, 0 if symmetric
+int dyco_coroutine_isasymmetric(int cid);
+
+// return the coroutine ID on success, < 0 on error
+int dyco_asymcoro_create(proc_coroutine func, void *arg);
+
+// return cid on coroutine yield, 0 on coroutine finish, < 0 on error
+int dyco_asymcoro_resume(int cid);
+
+// interupt and go back
+void dyco_asymcoro_yield();
+
+void dyco_asymcoro_free(int cid);
+
+// return ID of current coroutine
+int dyco_asymcoro_coroID();
+
+// stacksize: 0 to cancel independent stack
+// return 1 on successfully set, 0 on successfully cancel, < 0 on error
+int dyco_asymcoro_setStack(int cid, void *stackptr, size_t stacksize);
+int dyco_asymcoro_getStack(int cid, void **stackptr, size_t *stacksize);
+
+// return 0 on success
+int dyco_asymcoro_setUdata(int cid, void *udata);
+int dyco_asymcoro_getUdata(int cid, void **udata);
+
+// return NULL on error
+dyco_coropool* dyco_asymcpool_create(int totalsize, size_t stacksize);
+dyco_coropool* dyco_asymcpool_resize(dyco_coropool* cp, int newsize);
+
+// return 0 on success
+int dyco_asymcpool_destroy(dyco_coropool** cp);
+
+// return number of available coroutine in this pool
+int dyco_asymcpool_available(dyco_coropool* cp);
+
+// obtain a coroutine from the pool. 
+// If there is no free coroutine, wait timeout
+// return 0 on timeout, -1 on error, > 0 on success
+int dyco_asymcpool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
+
+// return a finished coroutine to the pool
+void dyco_asymcpool_return(int cid);
 ```
 
 # About Coroutine

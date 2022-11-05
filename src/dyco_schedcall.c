@@ -1,5 +1,5 @@
 #include "dyco_coroutine.h"
-extern void _save_stack(dyco_coroutine *co);
+extern void _savestk(dyco_coroutine *co);
 
 typedef struct {
 	int		__how;
@@ -86,7 +86,7 @@ void dyco_schedcall_stop()
 	SETBIT(co->status, COROUTINE_STATUS_SCHEDCALL);
 	SETBIT(co->status, COROUTINE_STATUS_READY);
 	TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
-	_save_stack(co);
+	_savestk(co);
 	swapcontext(&co->ctx, &co->sched->ctx);
 	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
 	CLRBIT(co->status, COROUTINE_STATUS_SCHEDCALL);

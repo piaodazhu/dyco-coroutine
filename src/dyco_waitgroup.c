@@ -141,6 +141,7 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 	if (co == NULL) {
 		return -1;
 	}
+	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	eventfd_t count;
 	int ret;

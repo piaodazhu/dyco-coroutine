@@ -1,6 +1,6 @@
 #ifndef __COROUTINE_H__
 #define __COROUTINE_H__
-#define DYCO_VERSION		"v1.1.0"
+#define DYCO_VERSION		"v1.2.0"
 
 // ------ 1. Included Headers
 #define _GNU_SOURCE
@@ -294,15 +294,13 @@ static inline int _coroutine_sleep_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
 // ------ 5. Inner Primes
 // User DO NOT use them. Use User APIs is enough in most case.
 // 5.1 coroutine
-// void _init_coro(dyco_coroutine *co);
-void _save_stack(dyco_coroutine *co);
-void _load_stack(dyco_coroutine *co);
+dyco_coroutine* _newcoro();
+void _freecoro(dyco_coroutine *co);
+void _savestk(dyco_coroutine *co);
+void _loadstk(dyco_coroutine *co);
 int _resume(dyco_coroutine *co);
 void _yield(dyco_coroutine *co);
-int _wait_events(int fd, unsigned int events, int timeout);
-dyco_coroutine* dyco_coroutine_new();
-void dyco_coroutine_free(dyco_coroutine *co);
-void dyco_coropool_return(dyco_coroutine *co);
+int _waitev(int fd, unsigned int events, int timeout);
 
 // 5.2 scheduler
 void _schedule_sched_sleep(dyco_coroutine *co, int msecs);
@@ -314,7 +312,7 @@ void _schedule_stop(dyco_schedule *__sched);
 void _schedule_abort(dyco_schedule *__sched);
 
 // ------ 6. User APIs
-// 6.1 coroutine
+// 6.1 coroutine & coroutines pool
 int dyco_coroutine_create(proc_coroutine func, void *arg);
 void dyco_coroutine_sleep(uint32_t msecs);
 int dyco_coroutine_waitRead(int fd, int timeout);
@@ -327,22 +325,6 @@ int dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize);
 int dyco_coroutine_setUdata(int cid, void *udata);
 int dyco_coroutine_getUdata(int cid, void **udata);
 int dyco_coroutine_getSchedCount(int cid);
-
-int dyco_asymcoro_create(proc_coroutine func, void *arg);
-int dyco_asymcoro_resume(int cid);
-void dyco_asymcoro_yield();
-void dyco_asymcoro_free(int cid);
-int dyco_asymcoro_coroID();
-int dyco_asymcoro_setStack(int cid, void *stackptr, size_t stacksize);
-int dyco_asymcoro_getStack(int cid, void **stackptr, size_t *stacksize);
-int dyco_asymcoro_setUdata(int cid, void *udata);
-int dyco_asymcoro_getUdata(int cid, void **udata);
-
-dyco_coropool* dyco_asympool_create(int totalsize, size_t stacksize);
-dyco_coropool* dyco_asympool_resize(dyco_coropool* cp, int newsize);
-int dyco_asympool_destroy(dyco_coropool** cp);
-int dyco_asympool_available(dyco_coropool* cp);
-int dyco_asympool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
 
 dyco_coropool* dyco_coropool_create(int totalsize, size_t stacksize);
 dyco_coropool* dyco_coropool_resize(dyco_coropool* cp, int newsize);
@@ -428,6 +410,25 @@ int dyco_SSL_read(SSL *ssl, void *buf, int num);
 int dyco_SSL_write(SSL *ssl, const void *buf, int num);
 #endif
 #endif
+
+// 6.12 asymmetric coroutine & asymmetric coroutines pool
+int dyco_coroutine_isasymmetric(int cid);
+int dyco_asymcoro_create(proc_coroutine func, void *arg);
+int dyco_asymcoro_resume(int cid);
+void dyco_asymcoro_yield();
+void dyco_asymcoro_free(int cid);
+int dyco_asymcoro_coroID();
+int dyco_asymcoro_setStack(int cid, void *stackptr, size_t stacksize);
+int dyco_asymcoro_getStack(int cid, void **stackptr, size_t *stacksize);
+int dyco_asymcoro_setUdata(int cid, void *udata);
+int dyco_asymcoro_getUdata(int cid, void **udata);
+
+dyco_coropool* dyco_asymcpool_create(int totalsize, size_t stacksize);
+dyco_coropool* dyco_asymcpool_resize(dyco_coropool* cp, int newsize);
+int dyco_asymcpool_destroy(dyco_coropool** cp);
+int dyco_asymcpool_available(dyco_coropool* cp);
+int dyco_asymcpool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
+void dyco_asymcpool_return(int cid);
 
 // ------ 7. Hook Functions
 typedef int (*socket_t)(int domain, int type, int protocol);

@@ -15,6 +15,8 @@ int dyco_signal_waitchild(const pid_t child, int *status, int timeout)
 	if (co == NULL) {
 		return -1;
 	}
+	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
+
 	sigset_t sigmask;
 	sigemptyset(&sigmask);
 	sigaddset(&sigmask, SIGCHLD);
@@ -96,6 +98,7 @@ int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout)
 	if (co == NULL) {
 		return -1;
 	}
+	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 	if (!TESTBIT(co->status, COROUTINE_FLAGS_WAITSIGNAL)) {
 		return -1;
 	}

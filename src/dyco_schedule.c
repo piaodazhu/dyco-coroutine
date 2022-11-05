@@ -221,16 +221,16 @@ _schedule_abort(dyco_schedule *__sched)
 	{
 		co = TAILQ_FIRST(&__sched->ready);
 		TAILQ_REMOVE(&co->sched->ready, co, ready_next);
-		dyco_coroutine_free(co);
+		_freecoro(co);
 		// ++cnt1;
 	}
 	
 	while ((co = RB_MIN(_dyco_coroutine_rbtree_sleep, &__sched->sleeping)) != NULL) {
 		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
-		dyco_coroutine_free(co);
+		_freecoro(co);
 		// ++cnt2;
 	}
-	dyco_coroutine_free(__sched->curr_thread);
+	_freecoro(__sched->curr_thread);
 	__sched->curr_thread = NULL;
 	assert(__sched->coro_count == 0);
 	__sched->status = SCHEDULE_STATUS_ABORTED;

@@ -3,6 +3,8 @@
 pthread_key_t global_sched_key;
 static pthread_once_t sched_key_once = PTHREAD_ONCE_INIT;
 
+extern void dyco_coropool_return(dyco_coroutine *co);
+
 static void 
 _sched_key_destructor(void *data)
 {
@@ -50,7 +52,7 @@ _init_coro(dyco_coroutine *co)
 }
 
 void
-_save_stack(dyco_coroutine *co)
+_savestk(dyco_coroutine *co)
 {
 	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK))
 		return;
@@ -70,7 +72,7 @@ _save_stack(dyco_coroutine *co)
 }
 
 void
-_load_stack(dyco_coroutine *co)
+_loadstk(dyco_coroutine *co)
 {
 	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK))
 		return;
@@ -83,7 +85,7 @@ void
 _yield(dyco_coroutine *co)
 {
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED) == 0) {
-		_save_stack(co);
+		_savestk(co);
 	}
 	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
 	swapcontext(&co->ctx, &co->sched->ctx);
@@ -97,7 +99,7 @@ _resume(dyco_coroutine *co)
 		_init_coro(co);
 	}
 	else {
-		_load_stack(co);
+		_loadstk(co);
 	}
 
 	dyco_schedule *sched = co->sched;
@@ -119,7 +121,7 @@ _resume(dyco_coroutine *co)
 		if (TESTBIT(co->status, COROUTINE_FLAGS_INCOROPOOL))
 			dyco_coropool_return(co);
 		else
-			dyco_coroutine_free(co);
+			_freecoro(co);
 		
 		return -1;
 	}
@@ -127,7 +129,7 @@ _resume(dyco_coroutine *co)
 }
 
 int
-_wait_events(int fd, unsigned int events, int timeout)
+_waitev(int fd, unsigned int events, int timeout)
 {
 	// events: uint32 epoll event
 	// timeout: Specifying a negative value  in  timeout  means  an infinite  timeout. Specifying  a timeout of zero causes dyco_poll_inner() to return immediately
@@ -148,7 +150,8 @@ _wait_events(int fd, unsigned int events, int timeout)
 	if (co == NULL) {
 		return -1;
 	}
-
+	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
+	
 	struct epoll_event ev;
 	ev.data.fd = fd;
 	ev.events = events;
@@ -168,7 +171,7 @@ _wait_events(int fd, unsigned int events, int timeout)
 int 
 dyco_coroutine_create(proc_coroutine func, void *arg) 
 {
-	dyco_coroutine *co = dyco_coroutine_new();
+	dyco_coroutine *co = _newcoro();
 	if (co == NULL) {
 		printf("Failed to allocate memory for new coroutine\n");
 		return -2;
@@ -189,7 +192,7 @@ dyco_coroutine_create(proc_coroutine func, void *arg)
 }
 
 dyco_coroutine*
-dyco_coroutine_new()
+_newcoro()
 {
 	int ret = pthread_once(&sched_key_once, _sched_key_creator);
 	assert(ret == 0);
@@ -237,7 +240,7 @@ dyco_coroutine_new()
 	return co;
 }
 void 
-dyco_coroutine_free(dyco_coroutine *co) {
+_freecoro(dyco_coroutine *co) {
 	if (co == NULL)
 		return;
 
@@ -273,6 +276,8 @@ dyco_coroutine_sleep(uint32_t msecs) {
 	if (co == NULL) {
 		return;
 	}
+	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
+
 	if (msecs == 0) {
 		SETBIT(co->status, COROUTINE_STATUS_READY);
 		TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
@@ -285,20 +290,20 @@ dyco_coroutine_sleep(uint32_t msecs) {
 int
 dyco_coroutine_waitRead(int fd, int timeout)
 {
-	return _wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout); 
+	return _waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout); 
 }
 
 
 int
 dyco_coroutine_waitWrite(int fd, int timeout)
 {
-	return _wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
+	return _waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 }
 
 int
 dyco_coroutine_waitRW(int fd, int timeout)
 {
-	return _wait_events(fd, EPOLLOUT | EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
+	return _waitev(fd, EPOLLOUT | EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 }
 
 

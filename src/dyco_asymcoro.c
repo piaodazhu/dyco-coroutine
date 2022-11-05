@@ -1,5 +1,20 @@
 #include "dyco_coroutine.h"
 
+int
+dyco_coroutine_isasymmetric(int cid)
+{
+	dyco_schedule *sched = _get_sched();
+	if (sched == NULL) {
+		return -2;
+	}
+	dyco_coroutine *co = _htable_find(&sched->cid_co_map, cid);
+	if (co == NULL) {
+		return -1;
+	}
+
+	return TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC);
+}
+
 static void 
 _exec(void *c) {
 	dyco_coroutine *co = (dyco_coroutine*)c;
@@ -30,7 +45,7 @@ _init_coro(dyco_coroutine *co)
 int
 dyco_asymcoro_create(proc_coroutine func, void *arg)
 {
-	dyco_coroutine *co = dyco_coroutine_new();
+	dyco_coroutine *co = _newcoro();
 	if (co == NULL) {
 		printf("Failed to allocate memory for new coroutine\n");
 		return -2;
@@ -67,7 +82,7 @@ dyco_asymcoro_resume(int cid)
 	if (TESTBIT(co_next->status, COROUTINE_STATUS_NEW)) {
 		_init_coro(co_next);
 	} else {
-		_load_stack(co_next);
+		_loadstk(co_next);
 	}
 
 	++co_next->sched_count;
@@ -95,7 +110,7 @@ dyco_asymcoro_yield()
 	assert(co != NULL);
 
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED) == 0) {
-		_save_stack(co);
+		_savestk(co);
 	}
 	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
 	swapcontext(&co->ctx, &co->ret);

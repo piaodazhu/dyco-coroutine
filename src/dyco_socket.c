@@ -30,7 +30,7 @@ dyco_accept(int fd, struct sockaddr *addr, socklen_t *len)
 
 	while (1)
 	{
-		_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
 
 		sockfd = accept_f(fd, addr, len);
 		if (sockfd < 0)
@@ -76,7 +76,7 @@ dyco_connect(int fd, struct sockaddr *name, socklen_t namelen)
 
 	while (1)
 	{
-		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
 
 		ret = connect_f(fd, name, namelen);
 		if (ret == 0)
@@ -102,7 +102,7 @@ dyco_recv(int fd, void *buf, size_t len, int flags)
 {
 	int timeout = TIMEOUT_DEFAULT;
 
-	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
+	_waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
 	int ret = recv_f(fd, buf, len, flags);
 
@@ -115,7 +115,7 @@ dyco_recvfrom(int fd, void *buf, size_t len, int flags,
 {
 	int timeout = TIMEOUT_DEFAULT;
 
-	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
+	_waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
 	int ret = recvfrom_f(fd, buf, len, flags, src_addr, addrlen);
 	return ret;
@@ -135,7 +135,7 @@ dyco_send(int fd, const void *buf, size_t len, int flags)
 
 	while (sent < len)
 	{
-		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
+		_waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 		
 		ret = send_f(fd, ((char *)buf) + sent, len - sent, flags);
 		if (ret <= 0)
@@ -175,7 +175,7 @@ dyco_sendto(int fd, const void *buf, size_t len, int flags,
 
 	while (sent < len)
 	{
-		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
+		_waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 
 		ret = sendto_f(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
 		if (ret <= 0)
@@ -237,7 +237,7 @@ accept(int fd, struct sockaddr *addr, socklen_t *len)
 
 	while (1)
 	{
-		_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
 
 		sockfd = accept_f(fd, addr, len);
 		if (sockfd < 0)
@@ -283,7 +283,7 @@ connect(int fd, const struct sockaddr *addr, socklen_t addrlen)
 
 	while (1)
 	{
-		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
 
 		ret = connect_f(fd, addr, addrlen);
 		if (ret == 0)
@@ -309,7 +309,7 @@ recv(int fd, void *buf, size_t len, int flags)
 {
 	int timeout = TIMEOUT_DEFAULT;
 
-	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
+	_waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
 	int ret = recv_f(fd, buf, len, flags);
 
@@ -322,7 +322,7 @@ recvfrom(int fd, void *buf, size_t len, int flags,
 {
 	int timeout = TIMEOUT_DEFAULT;
 
-	_wait_events(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
+	_waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
 	int ret = recvfrom_f(fd, buf, len, flags, src_addr, addrlen);
 	return ret;
@@ -342,7 +342,7 @@ send(int fd, const void *buf, size_t len, int flags)
 
 	while (sent < len)
 	{
-		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
+		_waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 		
 		ret = send_f(fd, ((char *)buf) + sent, len - sent, flags);
 		if (ret <= 0)
@@ -382,7 +382,7 @@ sendto(int fd, const void *buf, size_t len, int flags,
 
 	while (sent < len)
 	{
-		_wait_events(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
+		_waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 
 		ret = sendto_f(fd, ((char *)buf) + sent, len - sent, flags, dest_addr, addrlen);
 		if (ret <= 0)
