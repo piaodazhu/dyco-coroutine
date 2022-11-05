@@ -25,12 +25,12 @@ int OpenListener(int port)
 	if (bind(sd, (struct sockaddr *)&addr, sizeof(addr)) != 0)
 	{
 		perror("can't bind port");
-		ABORT();
+		DYCO_ABORT();
 	}
 	if (listen(sd, 10) != 0)
 	{
 		perror("Can't configure listening port");
-		ABORT();
+		DYCO_ABORT();
 	}
 	return sd;
 }
@@ -49,7 +49,7 @@ SSL_CTX *InitServerCTX(void)
 	if (ctx == NULL)
 	{
 		ERR_print_errors_fp(stderr);
-		ABORT();
+		DYCO_ABORT();
 	}
 	return ctx;
 }
@@ -68,20 +68,20 @@ void LoadCertificates(SSL_CTX *ctx, char *CertFile, char *KeyFile)
 	if (SSL_CTX_use_certificate_file(ctx, CertFile, SSL_FILETYPE_PEM) <= 0)
 	{
 		ERR_print_errors_fp(stderr);
-		ABORT();
+		DYCO_ABORT();
 	}
 	/* set the private key from KeyFile (may be the same as CertFile) */
 	SSL_CTX_set_default_passwd_cb_userdata(ctx, "12345678");
 	if (SSL_CTX_use_PrivateKey_file(ctx, KeyFile, SSL_FILETYPE_PEM) <= 0)
 	{
 		ERR_print_errors_fp(stderr);
-		ABORT();
+		DYCO_ABORT();
 	}
 	/* verify private key */
 	if (!SSL_CTX_check_private_key(ctx))
 	{
 		fprintf(stderr, "Private key does not match the public certificate\n");
-		ABORT();
+		DYCO_ABORT();
 	}
 
 	// New lines - Force the client-side have a certificate

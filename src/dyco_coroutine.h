@@ -257,7 +257,18 @@ struct _semaphore {
 #define CLRBIT(d, x)			do {(d) &= (~BIT(x));} while(0)
 #define TESTBIT(d, x)			(((d) & BIT(x)) != 0)
 
-#define ABORT()	do {printf("ERROR occurs in %s:%d\n", __FILE__, __LINE__); exit(1); } while(0)
+#define DYCO_ABORT()			do { \
+						printf("[x] error occurs in %s:%s:%d\n", __FILE__, __FUNCTION__, __LINE__); \
+						exit(1); \
+					} while(0)
+#define DYCO_MUST(logic) 		if (!(logic)) { \
+						printf("[?] condition is not met in %s:%s:%d\n", __FILE__, __FUNCTION__, __LINE__); \
+						exit(1); \
+					}
+#define DYCO_WARNIF(logic, msg) 	if ((logic)) { \
+						printf("[!] warning in %s:%s:%d: %s\n", __FILE__, __FUNCTION__, __LINE__, msg); \
+					}
+
 extern pthread_key_t global_sched_key;
 
 static inline dyco_schedule *_get_sched(void)

@@ -81,6 +81,10 @@ void bar(void *arg)
 
 int main()
 {
+	// DYCO_ABORT();
+	DYCO_WARNIF(1, "goodmorning");
+	DYCO_MUST(1);
+	DYCO_MUST(0);
 	printf("\tA. create and resume asymmetric coroutines in main thread.\n");
 	int i = 0;
 	int *times = (int*)malloc(sizeof(int));

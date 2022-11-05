@@ -17,7 +17,7 @@ void LoadCertificates(SSL_CTX *ctx, char *CertFile, char *KeyFile, char *passwor
 	if (SSL_CTX_use_certificate_file(ctx, CertFile, SSL_FILETYPE_PEM) <= 0)
 	{
 		ERR_print_errors_fp(stderr);
-		ABORT();
+		DYCO_ABORT();
 	}
 
 	/* set the private key from KeyFile (may be the same as CertFile) */
@@ -25,14 +25,14 @@ void LoadCertificates(SSL_CTX *ctx, char *CertFile, char *KeyFile, char *passwor
 	if (SSL_CTX_use_PrivateKey_file(ctx, KeyFile, SSL_FILETYPE_PEM) <= 0)
 	{
 		ERR_print_errors_fp(stderr);
-		ABORT();
+		DYCO_ABORT();
 	}
 
 	/* verify private key */
 	if (!SSL_CTX_check_private_key(ctx))
 	{
 		fprintf(stderr, "Private key does not match the public certificate\n");
-		ABORT();
+		DYCO_ABORT();
 	}
 }
 
@@ -51,7 +51,7 @@ int OpenConnection(const char *hostname, int port)
 	{
 		close(fd);
 		perror(hostname);
-		ABORT();
+		DYCO_ABORT();
 	}
 	return fd;
 }
@@ -70,7 +70,7 @@ SSL_CTX *InitCTX(void)
 	if (ctx == NULL)
 	{
 		ERR_print_errors_fp(stderr);
-		ABORT();
+		DYCO_ABORT();
 	}
 	return ctx;
 }

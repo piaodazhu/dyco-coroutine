@@ -15,7 +15,7 @@ void server_reader(void *arg) {
 		ret = dyco_recv(fd, buf, 1024, 0);
 		if (ret > 0) {
 			if(fd > MAX_CLIENT_NUM) 
-				ABORT();
+				DYCO_ABORT();
 			printf("read from client: %.*s\n", ret, buf);
 
 			ret = dyco_send(fd, buf, strlen(buf), 0);

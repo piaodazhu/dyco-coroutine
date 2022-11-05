@@ -40,7 +40,7 @@ dyco_epoll_wait(struct epoll_event *__events, int __maxevents, int __timeout)
 	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 	if (!TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
 		perror("ERROR: 4dyco_epoll_init haven't been called!");
-		ABORT();
+		DYCO_ABORT();
 		return -1;
 	}
 

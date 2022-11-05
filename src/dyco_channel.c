@@ -132,7 +132,7 @@ dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeou
 					ret = __size;
 					break;
 				case HDC_STATUS_FULL:
-					ABORT();
+					DYCO_ABORT();
 					break;
 				case HDC_STATUS_WANTREAD:
 					__chan->msglen = __size;
@@ -192,7 +192,7 @@ dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __tim
 
 			switch(__chan->status) {
 				case HDC_STATUS_EMPTY:
-					ABORT();
+					DYCO_ABORT();
 					break;
 				case HDC_STATUS_FULL:
 					ret = __chan->msglen;

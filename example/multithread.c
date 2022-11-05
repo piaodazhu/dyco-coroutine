@@ -22,7 +22,7 @@ void server_reader(void *arg) {
 		ret = dyco_recv(fd, buf, 1024, 0);
 		if (ret > 0) {
 			if(fd > MAX_CLIENT_NUM_PERTHEAD)
-				ABORT();
+				DYCO_ABORT();
 			printf("[thread %lu] read from client: %.*s\n", rarg->targ->tid, ret, buf);
 
 			ret = dyco_send(fd, buf, strlen(buf), 0);

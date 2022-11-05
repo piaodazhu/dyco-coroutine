@@ -66,7 +66,7 @@ _schedule_epoll_wait(dyco_schedule *sched)
 			if (errno == EINTR)
 				continue;
 			else
-				ABORT();
+				DYCO_ABORT();
 		}
 		break;
 	}
@@ -108,7 +108,7 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 	if (sched == NULL)
 	{
 		printf("Failed to initialize scheduler\n");
-		ABORT();
+		DYCO_ABORT();
 	}
 	int ret = pthread_setspecific(global_sched_key, sched);
 	assert(ret == 0);
@@ -117,7 +117,7 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 	if (sched->epollfd == -1)
 	{
 		printf("Failed to initialize epoller\n");
-		ABORT();
+		DYCO_ABORT();
 	}
 
 	int sched_stack_size = stack_size ? stack_size : DYCO_MAX_STACKSIZE;
