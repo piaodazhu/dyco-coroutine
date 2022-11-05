@@ -251,3 +251,140 @@ dyco_coropool_return(dyco_coroutine *co)
 	}
 	return;
 }
+
+dyco_coropool*
+dyco_asympool_create(int totalsize, size_t stacksize)
+{
+	if (totalsize <= 0) return NULL;
+	dyco_coropool *cp = (dyco_coropool*)malloc(sizeof(dyco_coropool));
+	if (cp == NULL) return NULL;
+	SLIST_INIT(&cp->freelist);
+	
+	int i, cid;
+	dyco_coroutine *cur;
+	for (i = 0; i < totalsize; ++i) {
+		cid = dyco_asymcoro_create(NULL, NULL);
+		assert(cid >= 0);
+
+		dyco_asymcoro_setStack(cid, NULL, stacksize);
+		
+		cur = _get_coro_by_cid(cid);
+		SLIST_INSERT_HEAD(&cp->freelist, cur, cpool_next);
+		SETBIT(cur->status, COROUTINE_FLAGS_INCOROPOOL);
+		cur->cpool = cp;
+	}
+
+	cp->totalsize = totalsize;
+	cp->activenum = 0;
+	cp->stacksize = stacksize;
+	cp->sublist = NULL;
+
+	return cp;
+}
+
+
+dyco_coropool*
+dyco_asympool_resize(dyco_coropool* cp, int newsize)
+{
+	if (cp == NULL || newsize == cp->totalsize)
+		return cp;
+	
+	int i, cid, n;
+	dyco_coroutine *cur;
+	if (cp->totalsize < newsize) {
+		// increase coros
+		for (i = cp->totalsize; i < newsize; ++i) {
+			cid = dyco_asymcoro_create(NULL, NULL);
+			assert(cid >= 0);
+
+			dyco_asymcoro_setStack(cid, NULL, cp->stacksize);
+			
+			cur = _get_coro_by_cid(cid);
+			SLIST_INSERT_HEAD(&cp->freelist, cur, cpool_next);
+			SETBIT(cur->status, COROUTINE_FLAGS_INCOROPOOL);
+			cur->cpool = cp;
+
+			if (cp->sublist != NULL) {
+				// notify
+				dyco_sublist *head = cp->sublist;
+				_cp_notify(head->notifyfd);
+				cp->sublist = head->next;
+			}
+		}
+		cp->totalsize = newsize;
+	} 
+	else
+	{
+		// decrease coros
+		n = newsize >= cp->activenum ? cp->totalsize - newsize : dyco_coropool_available(cp);
+		for (i = 0; i < n; ++i) {
+			cur = SLIST_FIRST(&cp->freelist);
+			SLIST_REMOVE_HEAD(&cp->freelist, cpool_next);
+			dyco_asymcoro_free(cur->cid);
+		}
+		cp->totalsize = newsize;
+	}
+	return cp;
+}
+
+
+int dyco_asympool_destroy(dyco_coropool** _cp)
+{
+	dyco_coropool* cp = *_cp;
+	if (cp == NULL) {
+		return 0;
+	}
+
+	if (cp->activenum != 0) return -1;
+	int i;
+	dyco_coroutine *cur;
+	for (i = 0; i < cp->totalsize; ++i) {
+		cur = SLIST_FIRST(&cp->freelist);
+		SLIST_REMOVE_HEAD(&cp->freelist, cpool_next);
+		dyco_asymcoro_free(cur->cid);
+	}
+	free(cp);
+	return 0;
+}
+
+
+int dyco_asympool_available(dyco_coropool* cp)
+{
+	return dyco_coropool_available(cp);
+}
+
+
+int dyco_asympool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout)
+{
+	if (func == NULL) 
+		return -1;
+	
+	int ret = _cp_wait(cp, timeout);
+	if (ret <= 0) {
+		return ret;
+	}
+
+	dyco_coroutine *co = SLIST_FIRST(&cp->freelist);
+	SLIST_REMOVE_HEAD(&cp->freelist, cpool_next);
+
+	++cp->activenum;
+
+	co->func = func;
+	co->arg = arg;
+
+	uint32_t newstatus = BIT(COROUTINE_STATUS_NEW) | BIT(COROUTINE_STATUS_READY) | BIT(COROUTINE_FLAGS_INCOROPOOL) | BIT(COROUTINE_FLAGS_ASYMMETRIC);
+	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK))
+		SETBIT(newstatus, COROUTINE_FLAGS_OWNSTACK);
+	if (TESTBIT(co->status, COROUTINE_FLAGS_ALLOCSTACKMEM))
+		SETBIT(newstatus, COROUTINE_FLAGS_ALLOCSTACKMEM);
+	co->status = newstatus;
+
+	co->sched_count = 0;
+	co->sleep_usecs = 0;
+	co->udata = NULL;
+	co->epollfd = -1;
+	co->sigfd = -1;
+
+	return co->cid;
+}
+

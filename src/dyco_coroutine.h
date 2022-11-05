@@ -338,6 +338,12 @@ int dyco_asymcoro_getStack(int cid, void **stackptr, size_t *stacksize);
 int dyco_asymcoro_setUdata(int cid, void *udata);
 int dyco_asymcoro_getUdata(int cid, void **udata);
 
+dyco_coropool* dyco_asympool_create(int totalsize, size_t stacksize);
+dyco_coropool* dyco_asympool_resize(dyco_coropool* cp, int newsize);
+int dyco_asympool_destroy(dyco_coropool** cp);
+int dyco_asympool_available(dyco_coropool* cp);
+int dyco_asympool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
+
 dyco_coropool* dyco_coropool_create(int totalsize, size_t stacksize);
 dyco_coropool* dyco_coropool_resize(dyco_coropool* cp, int newsize);
 int dyco_coropool_destroy(dyco_coropool** cp);
