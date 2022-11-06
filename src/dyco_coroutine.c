@@ -153,7 +153,7 @@ _waitev(int fd, unsigned int events, int timeout)
 	struct epoll_event ev;
 	ev.data.fd = fd;
 	ev.events = events;
-	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fd, &ev);
+	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fd, &ev) == 0);
 	_schedule_sched_wait(co, fd);
 	_schedule_sched_sleep(co, timeout);
 
@@ -161,7 +161,7 @@ _waitev(int fd, unsigned int events, int timeout)
 
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, fd);
-	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, &ev);
+	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, &ev) == 0);
 
 	return poll_f(&pfd, 1, 0);
 }
@@ -245,7 +245,7 @@ _freecoro(dyco_coroutine *co) {
 
 	if (TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
 		_schedule_cancel_wait(co, co->epollfd);
-		epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, co->epollfd, NULL);
+		DYCO_MUST(epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, co->epollfd, NULL) == 0);
 		close(co->epollfd);
 	}
 	if (TESTBIT(co->status, COROUTINE_FLAGS_WAITSIGNAL)) {

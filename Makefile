@@ -18,7 +18,7 @@ LIB_INSTALL_DIR = /usr/local/lib
 
 BIN = socket_server_example socket_client_example epoll_example sleep_example setstack_example signal_example stop_abort_example channel_example waitgroup_example pubsub_example semaphore_example multithread_example coropool_example asymmetric_example
 
-FLAG = -lpthread -O3 -ldl -I $(HDR_DIR)
+FLAG =  -O3 -lpthread -ldl -I $(HDR_DIR)
 SSLFLAG = -lssl -lcrypto -D DYCO_SSL_OK
 
 HASSSL := $(shell if [ -d /usr/local/include/openssl ] || [ -d /usr/include/openssl ]; then echo 1; fi)

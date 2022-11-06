@@ -85,7 +85,7 @@ int dyco_semaphore_wait(dyco_semaphore *sem, int timeout)
 	struct epoll_event ev;
 	ev.data.fd = notifyfd;
 	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev);
+	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev) == 0);
 	_schedule_sched_wait(co, notifyfd);
 	_schedule_sched_sleep(co, timeout);
 
@@ -93,7 +93,7 @@ int dyco_semaphore_wait(dyco_semaphore *sem, int timeout)
 
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, notifyfd);
-	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL);
+	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL) == 0);
 
 	eventfd_t count;
 	int ret;

@@ -77,13 +77,13 @@ _cp_wait(dyco_coropool* cp, int timeout)
 	struct epoll_event ev;
 	ev.data.fd = notifyfd;
 	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev);
+	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev) == 0);
 	_schedule_sched_wait(co, notifyfd);
 	_schedule_sched_sleep(co, timeout);
 	_yield(co);
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, notifyfd);
-	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL);
+	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL) == 0);
 
 	eventfd_t count;
 	int ret;
@@ -287,7 +287,7 @@ _cp_return(dyco_coroutine *co, int isasymmetric)
 
 	if (TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
 		_schedule_cancel_wait(co, co->epollfd);
-		epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, co->epollfd, NULL);
+		DYCO_MUST(epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, co->epollfd, NULL) == 0);
 		close(co->epollfd);
 	}
 	if (TESTBIT(co->status, COROUTINE_FLAGS_WAITSIGNAL)) {

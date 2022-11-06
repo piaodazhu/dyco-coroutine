@@ -156,6 +156,7 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 
 		dyco_sublist* sub = (dyco_sublist*)malloc(sizeof(dyco_sublist));
 		if (sub == NULL) {
+			close(notifyfd);
 			return -1;
 		}
 		sub->notifyfd = notifyfd;
@@ -171,7 +172,7 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		struct epoll_event ev;
 		ev.data.fd = notifyfd;
 		ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-		epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev);
+		DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev) == 0);
 		_schedule_sched_wait(co, notifyfd);
 		_schedule_sched_sleep(co, __timeout);
 
@@ -179,7 +180,7 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 
 		_schedule_cancel_sleep(co);
 		_schedule_cancel_wait(co, notifyfd);
-		epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL);
+		DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL) == 0);
 
 		ret = eventfd_read(notifyfd, &count);
 
@@ -210,8 +211,11 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		DYCO_MUSTNOT(notifyfd == -1);
 
 		dyco_sublist* sub = (dyco_sublist*)malloc(sizeof(dyco_sublist));
-		if (sub == NULL) 
+		if (sub == NULL) {
+			close(notifyfd);
 			return -1;
+		}
+			
 		sub->notifyfd = notifyfd;
 		sub->next = NULL;
 
@@ -222,7 +226,7 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		struct epoll_event ev;
 		ev.data.fd = notifyfd;
 		ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-		epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev);
+		DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev) == 0);
 		_schedule_sched_wait(co, notifyfd);
 		_schedule_sched_sleep(co, __timeout);
 
@@ -230,7 +234,7 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 
 		_schedule_cancel_sleep(co);
 		_schedule_cancel_wait(co, notifyfd);
-		epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL);
+		DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL) == 0);
 
 		ret = eventfd_read(notifyfd, &count);
 

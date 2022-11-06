@@ -27,14 +27,14 @@ _hdc_wait(dyco_channel* chan, int fd, int timeout)
 	struct epoll_event ev;
 	ev.data.fd = fd;
 	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fd, &ev);
+	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fd, &ev) == 0);
 	_schedule_sched_wait(co, fd);
 	_schedule_sched_sleep(co, timeout);
 	_yield(co);
 
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, fd);
-	epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, NULL);
+	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, NULL) ==0);
 
 	eventfd_t count;
 	int ret;
@@ -64,15 +64,13 @@ dyco_channel_create(size_t __size)
 	chan->maxsize = __size > 0 ? __size : DYCO_DEFAULT_CHANNELSIZE;
 	chan->msg = malloc(chan->maxsize);
 	if (chan->msg == NULL) {
+		close(chan->r_notifyfd);
+		close(chan->w_notifyfd);
 		free(chan);
 		return NULL;
 	}
 	chan->msglen = 0;
-	chan->status = HDC_STATUS_EMPTY;
-	if (chan->msg == NULL) {
-		free(chan);
-		return NULL;
-	}	
+	chan->status = HDC_STATUS_EMPTY;	
 	return chan;
 }
 
