@@ -70,7 +70,7 @@ _schedule_epoll_wait(dyco_schedule *sched)
 		}
 		break;
 	}
-// printf("wait = %d, nready = %d\n", HTABLE_SIZE(&sched->fd_co_map), nready);
+
 	return nready;
 }
 

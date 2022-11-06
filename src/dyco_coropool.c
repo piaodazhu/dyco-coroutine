@@ -40,7 +40,7 @@ _coro_setstack(dyco_coroutine *co, void *stackptr, size_t stacksize)
 static void
 _cp_notify(int fd)
 {
-	eventfd_write(fd, 1);
+	DYCO_MUST(eventfd_write(fd, 1) == sizeof(eventfd_t));
 	return;
 }
 

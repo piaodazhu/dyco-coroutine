@@ -15,7 +15,7 @@ _psc_subnotify(dyco_pubsubchannel* pschan)
 static void
 _psc_pubnotify(dyco_pubsubchannel* pschan)
 {
-	eventfd_write(pschan->pub_notifyfd, (eventfd_t)(pschan->status));
+	DYCO_MUST(eventfd_write(pschan->pub_notifyfd, (eventfd_t)(pschan->status)) == sizeof(eventfd_t));
 	return;
 }
 
@@ -41,8 +41,7 @@ _psc_subwait(dyco_pubsubchannel* pschan, int timeout)
 
 	dyco_sublist *sublist = pschan->sublist;
 	dyco_sublist *subnode = (dyco_sublist*)malloc(sizeof(dyco_sublist));
-	if (subnode == NULL)
-		return PSC_STATUS_NOP;
+	DYCO_MUSTNOT(subnode == NULL);
 	subnode->notifyfd = notifyfd;
 	subnode->next = sublist;
 	pschan->sublist = subnode;

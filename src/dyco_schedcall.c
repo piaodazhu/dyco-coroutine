@@ -49,7 +49,7 @@ int dyco_schedcall_sigprocmask(int __how, sigset_t *__set, sigset_t *__oset)
 		return -1;
 	}
 
-	sigprocmask(SIG_BLOCK, __set, NULL);
+	DYCO_MUST(sigprocmask(SIG_BLOCK, __set, NULL) == 0);
 
 	_sigprocmask_args args = {__how, __set, __oset};
 	sched->schedcall.callnum = CALLNUM_SIGPROCMASK;

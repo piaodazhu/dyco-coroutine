@@ -2,7 +2,7 @@
 
 void _sem_notify(int fd, eventfd_t data)
 {
-	eventfd_write(fd, data);
+	DYCO_MUST(eventfd_write(fd, data) == sizeof(eventfd_t));
 }
 
 dyco_semaphore* dyco_semaphore_create(size_t value)

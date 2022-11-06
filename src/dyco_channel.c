@@ -22,7 +22,7 @@ _hdc_wait(dyco_channel* chan, int fd, int timeout)
 	if (co == NULL) {
 		return chan->status;
 	}
-	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
+	DYCO_MUSTNOT(TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	struct epoll_event ev;
 	ev.data.fd = fd;

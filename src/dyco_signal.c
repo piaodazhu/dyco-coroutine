@@ -15,11 +15,11 @@ int dyco_signal_waitchild(const pid_t child, int *status, int timeout)
 	if (co == NULL) {
 		return -1;
 	}
-	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
+	DYCO_MUSTNOT(TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
 	sigset_t sigmask;
-	sigemptyset(&sigmask);
-	sigaddset(&sigmask, SIGCHLD);
+	DYCO_MUST(sigemptyset(&sigmask) == 0);
+	DYCO_MUST(sigaddset(&sigmask, SIGCHLD) == 0);
 	dyco_schedcall_sigprocmask(SIG_BLOCK, &sigmask, &co->old_sigmask);
 	int sigfd = signalfd(-1, &sigmask, SFD_NONBLOCK);
 	DYCO_MUSTNOT(sigfd == -1);

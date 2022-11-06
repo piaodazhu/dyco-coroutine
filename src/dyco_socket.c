@@ -18,7 +18,8 @@ dyco_socket(int domain, int type, int protocol)
 		return -1;
 	}
 	int reuse = 1;
-	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse));
+	ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse));
+	DYCO_MUST(ret == 0);
 	return fd;
 }
 
@@ -62,7 +63,8 @@ dyco_accept(int fd, struct sockaddr *addr, socklen_t *len)
 		return -1;
 	}
 	int reuse = 1;
-	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse));
+	ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse));
+	DYCO_MUST(ret == 0);
 
 	return sockfd;
 }
@@ -224,7 +226,8 @@ socket(int domain, int type, int protocol)
 		return -1;
 	}
 	int reuse = 1;
-	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse));
+	ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse));
+	DYCO_MUST(ret == 0);
 	return fd;
 }
 
@@ -269,7 +272,8 @@ accept(int fd, struct sockaddr *addr, socklen_t *len)
 		return -1;
 	}
 	int reuse = 1;
-	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse));
+	ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse));
+	DYCO_MUST(ret == 0);
 
 	return sockfd;
 }
