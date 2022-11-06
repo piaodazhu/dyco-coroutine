@@ -1,23 +1,24 @@
 CC = gcc
 ECHO = echo
 
+PROJECTNAME = dyco
 SUB_DIR = src/ example/
 ROOT_DIR = $(shell pwd)
 OBJS_DIR = $(ROOT_DIR)/objs
 BIN_DIR = $(ROOT_DIR)/bin
 LIB_DIR = $(ROOT_DIR)/lib
 SRC_DIR = $(ROOT_DIR)/src
+HDR_DIR = $(ROOT_DIR)/include
 
 OBJS = $(patsubst %.c, %.o, $(notdir $(wildcard $(SRC_DIR)/*.c)))
 OBJS += $(patsubst %.S, %.o, $(notdir $(wildcard $(SRC_DIR)/*.S)))
-HDR = $(notdir $(wildcard $(SRC_DIR)/*.h))
-HDR_INSTALL_DIR = /usr/local/include/
+HDR_DIR_INSTALL_DIR = /usr/local/include
 LIB = libdyco.so
-LIB_INSTALL_DIR = /usr/local/lib/
+LIB_INSTALL_DIR = /usr/local/lib
 
 BIN = socket_server_example socket_client_example epoll_example sleep_example setstack_example signal_example stop_abort_example channel_example waitgroup_example pubsub_example semaphore_example multithread_example coropool_example asymmetric_example
 
-FLAG = -lpthread -O3 -ldl -I $(ROOT_DIR)/src
+FLAG = -lpthread -O3 -ldl -I $(HDR_DIR)
 SSLFLAG = -lssl -lcrypto -D DYCO_SSL_OK
 
 HASSSL := $(shell if [ -d /usr/local/include/openssl ] || [ -d /usr/include/openssl ]; then echo 1; fi)
@@ -103,14 +104,14 @@ $(LIB): $(addprefix $(LIB_DIR)/, $(OBJS))
 	
 install: $(LIB)
 	cp $(LIB_DIR)/$(LIB) $(LIB_INSTALL_DIR)
-	cp $(addprefix $(SRC_DIR)/, $(HDR)) $(HDR_INSTALL_DIR)
+	cp -r $(HDR_DIR)/$(PROJECTNAME) $(HDR_DIR_INSTALL_DIR)
 	ldconfig
 	rm -rf *.o *.so*
 	echo "Installing done."
 
 uninstall:
 	rm -rf $(LIB_INSTALL_DIR)$(LIB)
-	rm -rf $(addprefix $(HDR_INSTALL_DIR), $(HDR))
+	rm -rf $(HDR_DIR_INSTALL_DIR)/$(PROJECTNAME)
 	ldconfig
 	echo "Uninstalling done."
 

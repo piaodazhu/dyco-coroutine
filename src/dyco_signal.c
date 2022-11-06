@@ -1,4 +1,4 @@
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 
 int dyco_signal_waitchild(const pid_t child, int *status, int timeout)
 {
@@ -60,7 +60,7 @@ int dyco_signal_init(sigset_t *mask)
 	dyco_schedcall_sigprocmask(SIG_BLOCK, mask, &co->old_sigmask);
 	int sigfd = signalfd(-1, mask, SFD_NONBLOCK);
 	DYCO_MUSTNOT(sigfd == -1);
-	
+
 	co->sigfd = sigfd;
 	SETBIT(co->status, COROUTINE_FLAGS_WAITSIGNAL);
 

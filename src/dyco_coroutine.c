@@ -1,4 +1,4 @@
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 
 pthread_key_t global_sched_key;
 static pthread_once_t sched_key_once = PTHREAD_ONCE_INIT;

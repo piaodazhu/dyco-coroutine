@@ -1,4 +1,4 @@
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 
 atomic_uint sched_id_gen;
 

@@ -1,3 +1,6 @@
+#ifndef UCTX_386_H
+#define UCTX_386_H
+
 #define	setcontext(u)	setmcontext(&(u)->uc_mcontext)
 #define	getcontext(u)	getmcontext(&(u)->uc_mcontext)
 typedef struct mcontext mcontext_t;
@@ -118,4 +121,4 @@ struct ucontext {
 	int		__spare__[8];
 };
 
-
+#endif

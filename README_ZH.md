@@ -108,8 +108,12 @@ $ sudo ninja uninstall
 # 快速开始
 
 ```c
-#include "dyco_coroutine.h"
-#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <arpa/inet>
+
+// include this file to enjoy dyco
+#include "dyco/dyco_coroutine.h"
 
 // Pass the arguments by pointer.
 struct foobarargs {

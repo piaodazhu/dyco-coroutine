@@ -1,3 +1,6 @@
+#ifndef UCTX_MIPS_H
+#define UCTX_MIPS_H
+
 typedef struct mcontext mcontext_t;
 typedef struct ucontext ucontext_t;
 
@@ -75,3 +78,5 @@ struct ucontext {
 	int		uc_flags;
 	int		__spare__[4];
 };
+
+#endif

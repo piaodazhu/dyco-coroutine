@@ -1,4 +1,4 @@
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 
 static void
 _hdc_notify(dyco_channel* chan, int fd)

@@ -1,5 +1,8 @@
 /* Copyright (c) 2005-2006 Russ Cox, MIT; see COPYRIGHT */
 
+#ifndef DYCO_UCONTEXT_H
+#define DYCO_UCONTEXT_H
+
 #if defined(__sun__)
 #	define __EXTENSIONS__ 1 /* SunOS */
 #	if defined(__SunOS5_6__) || defined(__SunOS5_7__) || defined(__SunOS5_8__)
@@ -88,4 +91,6 @@ int getmcontext(mcontext_t*);
 void setmcontext(const mcontext_t*);
 #define	setcontext(u)	setmcontext(&(u)->uc_mcontext)
 #define	getcontext(u)	getmcontext(&(u)->uc_mcontext)
+#endif
+
 #endif

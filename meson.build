@@ -1,24 +1,24 @@
 project(
 	'dyco',
 	'c',
-	version: 'v1.1.0',
+	version: 'v1.2.0',
 	license : 'GPLv3',
 	default_options: []
 )
 project_description = 'a dynamic coroutine framework for C'
 
-header_dir = include_directories('src')
+header_dir = include_directories('include')
 
 project_headers = [
-	'src/dyco_coroutine.h',
-	'src/dyco_htable.h',
-	'src/dyco_ucontext.h',
-	'src/sys_queue.h',
-	'src/sys_tree.h',
-	'src/uctx_amd64.h',
-	'src/uctx_mips.h',
-	'src/uctx_power.h',
-	'src/uctx_386.h'
+	'include/dyco/dyco_coroutine.h',
+	'include/dyco/dyco_htable.h',
+	'include/dyco/dyco_ucontext.h',
+	'include/dyco/sys_queue.h',
+	'include/dyco/sys_tree.h',
+	'include/dyco/uctx_amd64.h',
+	'include/dyco/uctx_mips.h',
+	'include/dyco/uctx_power.h',
+	'include/dyco/uctx_386.h'
 ]
 
 project_source_files = [
@@ -93,7 +93,7 @@ set_variable(meson.project_name() + '_dep', libdyco_dep)
 
 # Make this library usable from the system's
 # package manager.
-install_headers(project_headers)
+install_headers(project_headers, subdir : meson.project_name())
 
 pkg_mod = import('pkgconfig')
 pkg_mod.generate(

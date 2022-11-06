@@ -1,3 +1,6 @@
+#ifndef UCTX_POWER_H
+#define UCTX_POWER_H
+
 #define	setcontext(u)	_setmcontext(&(u)->mc)
 #define	getcontext(u)	_getmcontext(&(u)->mc)
 typedef struct mcontext mcontext_t;
@@ -38,3 +41,4 @@ int swapcontext(ucontext_t*, const ucontext_t*);
 int _getmcontext(mcontext_t*);
 void _setmcontext(const mcontext_t*);
 
+#endif

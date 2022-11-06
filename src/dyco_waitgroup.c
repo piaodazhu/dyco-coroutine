@@ -1,7 +1,7 @@
 #ifndef _DYCO_WAITGROUP_H
 #define _DYCO_WAITGROUP_H
 
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 
 static void
 _wg_notify(int notifyfd, int finished_num)

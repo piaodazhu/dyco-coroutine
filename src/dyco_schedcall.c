@@ -1,4 +1,4 @@
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 extern void _savestk(dyco_coroutine *co);
 
 typedef struct {

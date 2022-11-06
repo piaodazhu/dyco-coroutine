@@ -1,4 +1,4 @@
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 
 #ifdef DYCO_SSL_OK
 #ifdef DYCO_SSL_ENABLE

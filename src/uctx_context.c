@@ -1,6 +1,6 @@
 /* Copyright (c) 2005-2006 Russ Cox, MIT; see COPYRIGHT */
 
-#include "dyco_ucontext.h"
+#include "dyco/dyco_ucontext.h"
 
 #if defined(__APPLE__)
 #if defined(__i386__)

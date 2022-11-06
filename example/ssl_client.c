@@ -8,7 +8,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 
 // Added the LoadCertificates how in the server-side makes.
 void LoadCertificates(SSL_CTX *ctx, char *CertFile, char *KeyFile, char *password)

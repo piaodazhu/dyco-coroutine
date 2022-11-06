@@ -116,7 +116,7 @@ if crypto_dep.found() and ssl_dep.found()
 		'ssl_client_example',
 		'ssl_client.c',
 		include_directories : header_dir,
-	c_args : build_args,
+		c_args : build_args,
 		dependencies : [crypto_dep, ssl_dep],
 		link_with : libdyco
 	)
@@ -125,7 +125,7 @@ if crypto_dep.found() and ssl_dep.found()
 		'ssl_server_example',
 		'ssl_server.c',
 		include_directories : header_dir,
-	c_args : build_args,
+		c_args : build_args,
 		dependencies : [crypto_dep, ssl_dep],
 		link_with : libdyco
 	)
@@ -138,7 +138,7 @@ if hiredis_dep.found()
 		'network_example',
 		'network.c',
 		include_directories : header_dir,
-	c_args : build_args,
+		c_args : build_args,
 		dependencies : [hiredis_dep],
 		link_with : libdyco
 	)

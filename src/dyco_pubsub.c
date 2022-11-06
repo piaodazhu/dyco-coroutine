@@ -1,4 +1,4 @@
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 
 static void
 _psc_subnotify(dyco_pubsubchannel* pschan)

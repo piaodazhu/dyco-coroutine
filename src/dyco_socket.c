@@ -1,4 +1,4 @@
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 
 #define TIMEOUT_DEFAULT		3000
 #define TIMEOUT_INFINIT		-1

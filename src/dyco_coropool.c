@@ -1,4 +1,4 @@
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 
 #define dyco_coropool_available(cp)	((cp)->totalsize - (cp)->activenum)
 
@@ -61,7 +61,7 @@ _cp_wait(dyco_coropool* cp, int timeout)
 
 	int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 	DYCO_MUSTNOT(notifyfd == -1);
-	
+
 	dyco_sublist *notify = (dyco_sublist*)malloc(sizeof(dyco_sublist));
 	if (notify == NULL)
 		return 0;

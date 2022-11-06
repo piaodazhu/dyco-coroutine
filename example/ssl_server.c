@@ -10,7 +10,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#include "dyco_coroutine.h"
+#include "dyco/dyco_coroutine.h"
 
 int OpenListener(int port)
 {
