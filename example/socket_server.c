@@ -7,6 +7,7 @@
 
 void server_reader(void *arg) {
 	int fd = *(int *)arg;
+	free(arg);
 	int ret = 0;
 
 	printf("server_reader start\n");
@@ -55,7 +56,9 @@ void server(void *arg) {
 		socklen_t len = sizeof(struct sockaddr_in);
 		int cli_fd = dyco_accept(fd, (struct sockaddr*)&remote, &len);
 		printf("new client comming\n");
-		dyco_coroutine_create(server_reader, &cli_fd);
+		int *client = malloc(sizeof(int));
+		*client = cli_fd;
+		dyco_coroutine_create(server_reader, client);
 	}
 	dyco_close(fd);
 	return;

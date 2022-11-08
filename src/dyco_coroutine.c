@@ -161,7 +161,7 @@ _waitev(int fd, unsigned int events, int timeout)
 
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, fd);
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, &ev) == 0);
+	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, NULL) == 0);
 
 	return poll_f(&pfd, 1, 0);
 }
