@@ -19,7 +19,7 @@ void server_reader(void *arg) {
 				DYCO_ABORT();
 			printf("read from client: %.*s\n", ret, buf);
 
-			ret = dyco_send(fd, buf, strlen(buf), 0);
+			ret = dyco_send(fd, buf, ret, 0);
 			if (ret == -1) {
 				dyco_close(fd);
 				printf("server_reader send failed: fd=%d\n",fd);
@@ -68,7 +68,7 @@ int main()
 {
 	int i = 0;
 	unsigned short base_port = 5000;
-	for (i = 0;i < 100;i ++) {
+	for (i = 0;i < 1;i ++) {
 		unsigned short *port = calloc(1, sizeof(unsigned short));
 		*port = base_port + i;
 		dyco_coroutine_create(server, port);

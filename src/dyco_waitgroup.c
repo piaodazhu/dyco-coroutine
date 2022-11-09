@@ -6,7 +6,7 @@
 static void
 _wg_notify(int notifyfd, int finished_num)
 {
-	DYCO_MUST(eventfd_write(notifyfd, (eventfd_t)finished_num) == sizeof(eventfd_t));
+	DYCO_MUST(eventfd_write(notifyfd, (eventfd_t)finished_num) == 0);
 	return;
 }
 

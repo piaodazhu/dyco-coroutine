@@ -37,7 +37,6 @@ _init_coro(dyco_coroutine *co)
 	}
 
 	makecontext(&co->ctx, (void (*)(void)) _exec, 1, (void*)co);
-
 	CLRBIT(co->status, COROUTINE_STATUS_NEW);
 	return;
 }

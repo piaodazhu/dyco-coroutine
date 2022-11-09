@@ -38,6 +38,7 @@
 #define		DYCO_SSL_ENABLE
 #define		DYCO_MAX_EVENTS			256
 #define		DYCO_MAX_STACKSIZE		(64 * 1024)
+#define		DYCO_DEFAULT_STACKSIZE		(16 * 1024)
 #define		DYCO_DEFAULT_TIMEOUT		3000000
 #define		DYCO_DEFAULT_CHANNELSIZE	256
 
@@ -277,7 +278,7 @@ extern pthread_key_t global_sched_key;
 
 static inline dyco_schedule *_get_sched()
 {
-	return pthread_getspecific(global_sched_key);
+	return (dyco_schedule*)pthread_getspecific(global_sched_key);
 }
 
 static inline uint64_t _diff_usecs(uint64_t t1, uint64_t t2)

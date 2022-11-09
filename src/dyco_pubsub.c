@@ -15,7 +15,7 @@ _psc_subnotify(dyco_pubsubchannel* pschan)
 static void
 _psc_pubnotify(dyco_pubsubchannel* pschan)
 {
-	DYCO_MUST(eventfd_write(pschan->pub_notifyfd, (eventfd_t)(pschan->status)) == sizeof(eventfd_t));
+	DYCO_MUST(eventfd_write(pschan->pub_notifyfd, (eventfd_t)(pschan->status)) == 0);
 	return;
 }
 
