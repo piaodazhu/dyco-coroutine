@@ -29,11 +29,10 @@
 ![DYCOARCH](./img/arch.png)
 
 预计未来还有一些工作方向:
-1. Testbench.
-2. 更好的跨平台支持。目前的跨平台设计参考自`jamwt/libtask`。但是只支持Linux系统。未来的工作可以参考`heiher/hev-task-system`和`tboox/tbox`。
-3. 发掘更多的特性需求，并不断完善。寻找Bug并修复。
-4. 性能优化。使用ucontext作为底层切换策略，意味着这个框架在协程切换性能上很难做到顶尖的表现（相比于直接用汇编）。但是依然可能存在其他的优化空间。
-5. 更丰富的构建方式。减少构建的复杂性，而不是增加。
+1. 更好的跨平台支持。目前的跨平台设计参考自`jamwt/libtask`。但是只支持Linux系统。未来的工作可以参考`heiher/hev-task-system`和`tboox/tbox`。
+2. 发掘更多的特性需求，并不断完善。寻找Bug并修复。
+3. 性能优化。使用ucontext作为底层切换策略，意味着这个框架在协程切换性能上很难做到顶尖的表现（相比于直接用汇编）。但是依然可能存在其他的优化空间。
+4. 更丰富的构建方式。减少构建的复杂性，而不是增加。
 
 如果这个项目对你有用，可以给个星星以表支持。也可以推荐给其他人用用看。吐槽或者有问题随时提issue。如果有想法也可以提PR，共同合作让这个项目变得更好。🌈
 
@@ -507,6 +506,14 @@ int dyco_asymcpool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int
 // return a finished coroutine to the pool
 void dyco_asymcpool_return(int cid);
 ```
+
+# Performance Test
+
+在[`evaluation.txt`](./evaluation.txt)可以查看性能评估结果。
+
+这些测试用到的工具是[NeTest](https://github.com/piaodazhu/netest.git)和`./switchtest/`下面的测试程序。
+
+结论：`dyco`的并发吞吐量接近epoll IO多路复用，远超`pthread`，和`libco`差别不大。`dyco`协程切换速度远高于`libco`，和`NtyCo`差别不大。遗憾的是，相比于`libco`，`dyco`的处理时延偏高。这部分将会在下一版本中优化。
 
 # About Coroutine
 

@@ -1,0 +1,49 @@
+A. Concurrency Evalution
+setup: 
+	Platform:	11th Gen Intel(R) Core(TM) i7-11700 @ 2.50GHz
+	Core number:	2
+	Memory:		2GB
+	OS:		Ubuntu Server 22.04.1 LTS
+
+Scenerio:
+	A TCP echo service. Each client connects the service, send a message and receive the reply for 3 times, then close the connection. We change the concurrent number ot the clients and test different implementations this TCP echo server: stupid loop / multi-thread / epoll / dyco / libco.
+
+Tool:
+	NeTest (https://github.com/piaodazhu/netest)
+
+Result:
+
+a. Service per Second (services/s):
+Server    stupid loop  multi-thread   epoll    dyco    dyco-indepentstack  dyco-coropool    libco
+Concurrent  
+100        8092           19725       47103    44168       47120               49216        51783
+500        8699           18338       54348    48875       46013               47141        53496
+1000       8734           19105       48608    49942       49964               48852        43115
+5000       7702           17843       43683    47543       45646               48045        36811
+10000      5393           5884        6812     6225        6809                6638         9112
+
+b. Average Latency (microseconds):
+Server    stupid loop  multi-thread   epoll    dyco    dyco-indepentstack  dyco-coropool     libco
+Concurren   
+100        12050          5414        2120     93524       94829               94226         2152 
+500        133059         102331      10350    123240      95491               112263        9428
+1000       103957         127490      20656    91405       95719               118148        23576
+5000       108827         406783      209355   138050      284412              174067        180412
+10000      133359         668121      1524945  1039954     1427573             1135403       1072891
+
+B. Coroutine Switch Evalution
+setup: 
+	Platform:	11th Gen Intel(R) Core(TM) i7-700 @ 2.50GHz
+	Core number:	2
+	Memory:		2GB
+	OS:		Ubuntu Server 22.04.1 LTS
+
+Scenerio:
+	Two simple counter coroutines who alternately execute. After 1000000 times of coroutine switches, we record the spent time and calculate the swithing time. 
+
+Tool:
+	switchtest/switch_dyco.c    switchtest/switch_libco.c
+
+Result:
+                         dyco     dyco-indepentstack   libco           NtyCo
+switch speed (M/s)     0.141227       0.141097        0.040588       0.140463

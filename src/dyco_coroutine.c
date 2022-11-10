@@ -275,9 +275,11 @@ dyco_coroutine_sleep(uint32_t msecs) {
 	if (msecs == 0) {
 		SETBIT(co->status, COROUTINE_STATUS_READY);
 		TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
+		// printf("insert to ready queue\n");
 	} else {
 		_schedule_sched_sleep(co, msecs);
 	}
+	// printf("yed\n");
 	_yield(co);
 }
 

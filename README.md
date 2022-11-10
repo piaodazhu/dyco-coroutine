@@ -29,11 +29,10 @@ Features of dyco-coroutine:
 ![DYCOARCH](./img/arch.png)
 
 There are still some future works:
-1. Testbench.
-2. Better cross-platform support. Currently the cross-platform design is derive from `jamwt/libtask`. But only Linux OS is supported. Future work can be referred to `heiher/hev-task-system` and `tboox/tbox`.
-3. Discover more feature requests and bugs by getting more people to use them.
-4. Performance optimization. Using ucontext predestines the framework to not be the best at switching performance. But there is still room for optimization.
-5. Simpler build solution. Don't make things more complicated.
+1. Better cross-platform support. Currently the cross-platform design is derive from `jamwt/libtask`. But only Linux OS is supported. Future work can be referred to `heiher/hev-task-system` and `tboox/tbox`.
+2. Discover more feature requests and bugs by getting more people to use them.
+3. Performance optimization. Using ucontext predestines the framework to not be the best at switching performance. But there is still room for optimization.
+4. Simpler build solution. Don't make things more complicated.
 
 You can give me a 🌟, or recommend it to others if you found dyco-coroutine helpful. And feel free to open issues or pull requests to make this project better. 🌈
 
@@ -487,6 +486,14 @@ int dyco_asymcpool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int
 // return a finished coroutine to the pool
 void dyco_asymcpool_return(int cid);
 ```
+
+# Performance Test
+
+See performance evaluation in [`evaluation.txt`](./evaluation.txt). 
+
+Tools for these test are [NeTest](https://github.com/piaodazhu/netest.git) and programs under `./switchtest/`.
+
+Conclusion: The concurrent throughput of `dyco` is close to epoll IO-multiplexing, and outperforms pthread. The coroutine switch speed of `dyco` is much higher than `libco`, and is the same as `NtyCo`. However, comparing with `libco`, the processing latency of `dyco` is a little bit high. This part should be optimized in next version.
 
 # About Coroutine
 
