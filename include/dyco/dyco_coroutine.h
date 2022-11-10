@@ -274,6 +274,11 @@ struct _semaphore {
 						printf("[!] warning in %s:%s:%d: %s\n", __FILE__, __FUNCTION__, __LINE__, msg); \
 					}
 
+#define DYCO_PRINTSTACK(co)		do { \
+						char dummy; \
+						size_t size = (char*)(co->stack + co->stack_size) - &dummy; \
+						printf("[i] stack size is [%lu] in %s:%s:%d\n", size, __FILE__, __FUNCTION__, __LINE__); \
+					} while (0)
 extern pthread_key_t global_sched_key;
 
 static inline dyco_schedule *_get_sched()
