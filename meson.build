@@ -1,7 +1,7 @@
 project(
 	'dyco',
 	'c',
-	version: 'v1.2.0',
+	version: 'v2.0.0',
 	license : 'GPLv3',
 	default_options: []
 )

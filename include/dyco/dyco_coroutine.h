@@ -1,6 +1,6 @@
 #ifndef __COROUTINE_H__
 #define __COROUTINE_H__
-#define DYCO_VERSION		"v1.2.0"
+#define DYCO_VERSION		"v2.0.0"
 
 // ------ 1. Included Headers
 #define _GNU_SOURCE

@@ -1,3 +1,11 @@
+## 2022-11-10: v2.0.0 released!
+
+Updates:
+1. Build the testbench and conduct the performance evaluation.
+2. Add some debug macros.
+3. Add some security patch for better rubust.
+4. Improve the documents. Bring some new plans in future works.
+
 ## 2022-11-5: v1.2.0 released!
 
 Updates:
