@@ -6,7 +6,8 @@ RB_GENERATE(_dyco_coroutine_rbtree_sleep, _dyco_coroutine, sleep_node, _coroutin
 
 #define SCHEDULE_ISDONE(sched)		(HTABLE_EMPTY(&sched->fd_co_map) && \
 				 	RB_EMPTY(&sched->sleeping) && \
-				 	TAILQ_EMPTY(&sched->ready))
+				 	TAILQ_EMPTY(&sched->ready) && \
+					TAILQ_EMPTY(&sched->urgent_ready))
 
 extern void dyco_coropool_return(dyco_coroutine *co);
 
@@ -44,7 +45,7 @@ _schedule_epoll_wait(dyco_schedule *sched)
 {
 	if (HTABLE_EMPTY(&sched->fd_co_map)) return 0;
 
-	if (!TAILQ_EMPTY(&sched->ready))
+	if (!TAILQ_EMPTY(&sched->ready) || !TAILQ_EMPTY(&sched->urgent_ready))
 		return epoll_wait_f(sched->epollfd, sched->eventlist, DYCO_MAX_EVENTS, 0);
 
 	uint64_t timeout = _schedule_min_timeout(sched);
@@ -128,6 +129,7 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 
 	sched->udata = NULL;
 	
+	TAILQ_INIT(&sched->urgent_ready);
 	TAILQ_INIT(&sched->ready);
 	RB_INIT(&sched->sleeping);
 
@@ -241,7 +243,7 @@ dyco_schedule_run()
 
 	DYCO_MUSTNOT(sched->status == SCHEDULE_STATUS_RUNNING);
 
-	int nready;
+	int idx, nready;
 	dyco_coroutine *expired;
 	dyco_coroutine *last_co_ready;
 
@@ -255,18 +257,24 @@ dyco_schedule_run()
 	
 	while (!SCHEDULE_ISDONE(sched))
 	{
+		// A. probing timing coroutines
 		expired = NULL;
 		while ((expired = _schedule_get_expired(sched)) != NULL)
 		{
 			SETBIT(expired->status, COROUTINE_STATUS_READY);
-			TAILQ_INSERT_TAIL(&sched->ready, expired, ready_next);
+			if (TESTBIT(expired->status, COROUTINE_FLAGS_URGENT))
+				TAILQ_INSERT_TAIL(&sched->urgent_ready, expired, ready_next);
+			else
+				TAILQ_INSERT_TAIL(&sched->ready, expired, ready_next);
 		}
 
-		last_co_ready = TAILQ_LAST(&sched->ready, _dyco_coroutine_queue);
-		while (!TAILQ_EMPTY(&sched->ready))
+		// B. processing urgent ready coroutines
+		last_co_ready = TAILQ_LAST(&sched->urgent_ready, _dyco_coroutine_queue);
+		idx = 0;
+		while (!TAILQ_EMPTY(&sched->urgent_ready))
 		{
-			dyco_coroutine *co = TAILQ_FIRST(&sched->ready);
-			TAILQ_REMOVE(&co->sched->ready, co, ready_next);
+			dyco_coroutine *co = TAILQ_FIRST(&sched->urgent_ready);
+			TAILQ_REMOVE(&sched->urgent_ready, co, ready_next);
 			CLRBIT(co->status, COROUTINE_STATUS_READY);
 			_resume(co);
 			if (sched->status == SCHEDULE_STATUS_STOPPED)
@@ -276,13 +284,36 @@ dyco_schedule_run()
 			
 			if (co == last_co_ready)
 				break;
+			if (++idx == DYCO_URGENT_MAXEXEC)
+				break;
 		}
 
+		// C. processing some of the ready coroutines
+		last_co_ready = TAILQ_LAST(&sched->ready, _dyco_coroutine_queue);
+		idx = 0;
+		while (!TAILQ_EMPTY(&sched->ready))
+		{
+			dyco_coroutine *co = TAILQ_FIRST(&sched->ready);
+			TAILQ_REMOVE(&sched->ready, co, ready_next);
+			CLRBIT(co->status, COROUTINE_STATUS_READY);
+			_resume(co);
+			if (sched->status == SCHEDULE_STATUS_STOPPED)
+				return 1;
+			else if (sched->status == SCHEDULE_STATUS_ABORTED)
+				return -1;
+			
+			if (co == last_co_ready)
+				break;
+			if (++idx == DYCO_URGENT_MAXWAIT)
+				break;
+		}
+
+		// D. probing event-driven coroutines
 		nready = _schedule_epoll_wait(sched);
 		if (nready == 0)
 			continue;
 
-		int idx = 0;
+		idx = 0;
 #ifdef	DYCO_RANDOM_WAITFD		
 		int idxarray[DYCO_MAX_EVENTS];
 		int ridx = 0, tmp = 0;
@@ -313,7 +344,10 @@ dyco_schedule_run()
 			if (co != NULL)
 			{
 				SETBIT(co->status, COROUTINE_STATUS_READY);
-				TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
+				if (TESTBIT(co->status, COROUTINE_FLAGS_URGENT))
+					TAILQ_INSERT_TAIL(&sched->urgent_ready, co, ready_next);
+				else
+					TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
 			}
 			++idx;
 		}

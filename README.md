@@ -25,6 +25,7 @@ Features of dyco-coroutine:
 10. Scheduler and be stopped by any coroutine, and continue running in main process.
 11. Multi-thread supported.
 12. Asymmetric coroutine is supported.
+13. Supports prioritized scheduling of urgent coroutine.
 
 ![DYCOARCH](./img/arch.png)
 
@@ -192,11 +193,15 @@ Some basic coroutine methods are defined here. `sleep/wait/coroID` can only be c
 
 `setStack` is **optional**. If the stack is not set before the coroutine runs. All coroutines whose stack is not set will share the stack of the scheduler. It saves memory space, but costs time for copying stacks when these coroutines yield. Thus, if a coroutine need frequently yield, it's better to set a stack for it. See more in `example/*`.
 
-**Coroutines Pool** is provided to avoid create and release coroutine/stack memory frequently. The coroutines pool can be create at any time and be resized after it created. Coroutines who belongs to a corotines pool will automatically return to the pool after user function finishes. By calling `obtain`, you can get a free coroutine from the pool. See more in `example/coropool_example.c`
+**Coroutines Pool** is provided to avoid create and release coroutine/stack memory frequently. The coroutines pool can be create at any time and be resized after it created. Coroutines who belongs to a corotines pool will automatically return to the pool after user function finishes. By calling `obtain`, you can get a free coroutine from the pool. See more in `example/coropool_example.c`.
+
+**Two-level priority** scheduling strategy is provided for some urgent coroutines. By calling `create_urgent` or `obtain_urgent`, you can get an urgent coroutine which tends to be woken up earlier than others. The urgent attribution can also be `setUrgent` or `unsetUrgent` inside a coroutine.
 
 ```c
 // return the coroutine ID on success, < 0 on error
 int dyco_coroutine_create(proc_coroutine func, void *arg);
+// this new coroutine will be resume as soon as possible
+int dyco_coroutine_create_urgent(proc_coroutine func, void *arg);
 
 void dyco_coroutine_sleep(uint32_t msecs);
 
@@ -222,6 +227,11 @@ int dyco_coroutine_getUdata(int cid, void **udata);
 // return total yield times of a coroutine 
 int dyco_coroutine_getSchedCount(int cid);
 
+// return 0 on success. 
+int dyco_coroutine_setUrgent(int cid);
+// return 0 on success
+int dyco_coroutine_unsetUrgent(int cid);
+
 // return NULL on error
 dyco_coropool* dyco_coropool_create(int totalsize, size_t stacksize);
 dyco_coropool* dyco_coropool_resize(dyco_coropool* cp, int newsize);
@@ -236,6 +246,7 @@ int dyco_coropool_available(dyco_coropool* cp);
 // If there is no free coroutine, wait timeout
 // return 0 on timeout, -1 on error, > 0 on success
 int dyco_coropool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
+int dyco_coropool_obtain_urgent(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
 ```
 
 ## Scheduler

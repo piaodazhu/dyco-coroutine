@@ -42,6 +42,8 @@
 #define		DYCO_DEFAULT_STACKSIZE		(16 * 1024)
 #define		DYCO_DEFAULT_TIMEOUT		10000000
 #define		DYCO_DEFAULT_CHANNELSIZE	256
+#define		DYCO_URGENT_MAXEXEC		16
+#define		DYCO_URGENT_MAXWAIT		16
 
 // ------ 3. Data Structure Defination
 // 3.0 sublist
@@ -112,6 +114,7 @@ struct _dyco_schedule
 	void 			*udata;
 
 	// coroutine containers
+	dyco_coroutine_queue 		urgent_ready;
 	dyco_coroutine_queue 		ready;
 	dyco_coroutine_rbtree_sleep 	sleeping;
 
@@ -139,6 +142,7 @@ typedef enum
 	COROUTINE_STATUS_SLEEPING,
 	COROUTINE_STATUS_SCHEDCALL,
 
+	COROUTINE_FLAGS_URGENT,
 	COROUTINE_FLAGS_OWNSTACK,
 	COROUTINE_FLAGS_ALLOCSTACKMEM,
 	COROUTINE_FLAGS_WAITING,
@@ -337,6 +341,7 @@ void _schedule_abort(dyco_schedule *__sched);
 // ------ 6. User APIs
 // 6.1 coroutine & coroutines pool
 int dyco_coroutine_create(proc_coroutine func, void *arg);
+int dyco_coroutine_create_urgent(proc_coroutine func, void *arg);
 void dyco_coroutine_sleep(uint32_t msecs);
 int dyco_coroutine_waitRead(int fd, int timeout);
 int dyco_coroutine_waitWrite(int fd, int timeout);
@@ -348,12 +353,15 @@ int dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize);
 int dyco_coroutine_setUdata(int cid, void *udata);
 int dyco_coroutine_getUdata(int cid, void **udata);
 int dyco_coroutine_getSchedCount(int cid);
+int dyco_coroutine_setUrgent(int cid);
+int dyco_coroutine_unsetUrgent(int cid);
 
 dyco_coropool* dyco_coropool_create(int totalsize, size_t stacksize);
 dyco_coropool* dyco_coropool_resize(dyco_coropool* cp, int newsize);
 int dyco_coropool_destroy(dyco_coropool** cp);
 int dyco_coropool_available(dyco_coropool* cp);
 int dyco_coropool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
+int dyco_coropool_obtain_urgent(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
 
 // 6.2 scheduler
 int dyco_schedule_run();

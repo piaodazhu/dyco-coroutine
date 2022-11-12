@@ -85,7 +85,12 @@ void dyco_schedcall_stop()
 	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
 	SETBIT(co->status, COROUTINE_STATUS_SCHEDCALL);
 	SETBIT(co->status, COROUTINE_STATUS_READY);
-	TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
+
+	if (TESTBIT(co->status, COROUTINE_FLAGS_URGENT))
+		TAILQ_INSERT_TAIL(&sched->urgent_ready, co, ready_next);
+	else
+		TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
+
 	_savestk(co);
 	swapcontext(&co->ctx, &co->sched->ctx);
 	SETBIT(co->status, COROUTINE_STATUS_RUNNING);

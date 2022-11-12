@@ -25,6 +25,7 @@
 10. 调度器及其管理的协程可以被暂停，然后在适当的时机恢复。
 11. 支持多线程。
 12. 支持非对称协程。
+13. 支持对紧急协程的优先调度。
 
 ![DYCOARCH](./img/arch.png)
 
@@ -212,9 +213,13 @@ int main()
 
 这里也提供了**协程池**，来防止频繁地创建释放协程和栈的内存空间。任何时候都可以创建协程池，创建完成后可以修改协程池的大小。协程池中的协程在用户函数执行完成后会自动归还到协程池。通过调用`obtain`，你可以从协程池中获得一个空闲协程。详见 `example/coropool_example.c`。
 
+为了满足一些紧急协程的需求，dyco提供了**2-优先级**调度策略。通过调用`create_urgent`或`obtain_urgent`，你可以获得一个紧急协程，它往往比其他协程更早被唤醒。紧急的属性也可以在协程内部进行设置（`setUrgent`）或者取消（`unsetUrgent`）。
+
 ```c
 // return the coroutine ID on success, < 0 on error
 int dyco_coroutine_create(proc_coroutine func, void *arg);
+// this new coroutine will be resume as soon as possible
+int dyco_coroutine_create_urgent(proc_coroutine func, void *arg);
 
 void dyco_coroutine_sleep(uint32_t msecs);
 
@@ -240,6 +245,11 @@ int dyco_coroutine_getUdata(int cid, void **udata);
 // return total yield times of a coroutine 
 int dyco_coroutine_getSchedCount(int cid);
 
+// return 0 on success. 
+int dyco_coroutine_setUrgent(int cid);
+// return 0 on success
+int dyco_coroutine_unsetUrgent(int cid);
+
 // return NULL on error
 dyco_coropool* dyco_coropool_create(int totalsize, size_t stacksize);
 dyco_coropool* dyco_coropool_resize(dyco_coropool* cp, int newsize);
@@ -254,6 +264,7 @@ int dyco_coropool_available(dyco_coropool* cp);
 // If there is no free coroutine, wait timeout
 // return 0 on timeout, -1 on error, > 0 on success
 int dyco_coropool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
+int dyco_coropool_obtain_urgent(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout);
 ```
 
 ## Scheduler

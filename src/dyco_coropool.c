@@ -217,7 +217,7 @@ _cp_destroy(dyco_coropool** _cp, int isasymmetric)
 }
 
 int
-_cp_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout, int isasymmetric)
+_cp_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout, int isasymmetric, int isurgent)
 {
 	DYCO_MUST(func != NULL);
 	
@@ -261,7 +261,13 @@ _cp_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout, int i
 	++sched->coro_count;
 
 	if (isasymmetric == 0) {
-		TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
+		if (isurgent) {
+			SETBIT(co->status, COROUTINE_FLAGS_URGENT);
+			TAILQ_INSERT_TAIL(&sched->urgent_ready, co, ready_next);
+		} else {
+			TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
+		}
+		
 		if (sched->status == SCHEDULE_STATUS_DONE) {
 			sched->status = SCHEDULE_STATUS_READY;
 		}
@@ -294,6 +300,7 @@ _cp_return(dyco_coroutine *co, int isasymmetric)
 		sigprocmask(SIG_SETMASK, &co->old_sigmask, NULL);
 		close(co->sigfd);
 	}
+	CLRBIT(co->status, COROUTINE_FLAGS_URGENT);
 
 	SLIST_INSERT_HEAD(&cp->freelist, co, cpool_next);
 	--cp->activenum;
@@ -329,8 +336,15 @@ dyco_coropool_destroy(dyco_coropool** cp)
 int
 dyco_coropool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout)
 {
-	return _cp_obtain(cp, func, arg, timeout, 0);
+	return _cp_obtain(cp, func, arg, timeout, 0, 0);
 }
+
+int
+dyco_coropool_obtain_urgent(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout)
+{
+	return _cp_obtain(cp, func, arg, timeout, 0, 1);
+}
+
 
 
 void
@@ -370,7 +384,7 @@ dyco_asymcpool_available(dyco_coropool* cp)
 int
 dyco_asymcpool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout)
 {
-	return _cp_obtain(cp, func, arg, timeout, 1);
+	return _cp_obtain(cp, func, arg, timeout, 1, 0);
 }
 
 void

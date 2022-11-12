@@ -189,10 +189,41 @@ dyco_coroutine_create(proc_coroutine func, void *arg)
 	DYCO_MUST(ret >= 0);
 	++sched->coro_count;
 	
-	TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
+	TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
 
-	if (co->sched->status == SCHEDULE_STATUS_DONE) {
-		co->sched->status = SCHEDULE_STATUS_READY;
+	if (sched->status == SCHEDULE_STATUS_DONE) {
+		sched->status = SCHEDULE_STATUS_READY;
+	}
+	return co->cid;
+}
+
+int 
+dyco_coroutine_create_urgent(proc_coroutine func, void *arg) 
+{
+	dyco_coroutine *co = _newcoro();
+	if (co == NULL) {
+		printf("Failed to allocate memory for new coroutine\n");
+		return -2;
+	}
+
+	co->func = func;
+	co->arg = arg;
+	
+	dyco_schedule *sched = _get_sched();
+	co->sched = sched;
+	// co->cid = sched->_cid_gen++;
+	sched->_cid_gen = (sched->_cid_gen + 1) & 0xffffff;
+	co->cid = ((sched->sched_id & 0xff) << 24) | sched->_cid_gen;
+
+	int ret = _htable_insert(&sched->cid_co_map, co->cid, co);
+	DYCO_MUST(ret >= 0);
+	++sched->coro_count;
+	
+	SETBIT(co->status, COROUTINE_FLAGS_URGENT);
+	TAILQ_INSERT_TAIL(&sched->urgent_ready, co, ready_next);
+
+	if (sched->status == SCHEDULE_STATUS_DONE) {
+		sched->status = SCHEDULE_STATUS_READY;
 	}
 	return co->cid;
 }
@@ -275,7 +306,10 @@ dyco_coroutine_sleep(uint32_t msecs) {
 
 	if (msecs == 0) {
 		SETBIT(co->status, COROUTINE_STATUS_READY);
-		TAILQ_INSERT_TAIL(&co->sched->ready, co, ready_next);
+		if (TESTBIT(co->status, COROUTINE_FLAGS_URGENT))
+			TAILQ_INSERT_TAIL(&sched->urgent_ready, co, ready_next);
+		else
+			TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
 		// printf("insert to ready queue\n");
 	} else {
 		_schedule_sched_sleep(co, msecs);
@@ -391,6 +425,37 @@ dyco_coroutine_getUdata(int cid, void **udata)
 		return -1;
 	}
 	*udata = co->udata;
+	return 0;
+}
+
+int
+dyco_coroutine_setUrgent(int cid)
+{
+	dyco_schedule *sched = _get_sched();
+	if (sched == NULL) {
+		return -1;
+	}
+	dyco_coroutine *co = _htable_find(&sched->cid_co_map, cid);
+	if (co == NULL) {
+		return -1;
+	}
+	SETBIT(co->status, COROUTINE_FLAGS_URGENT);
+	return 0;
+}
+
+
+int
+dyco_coroutine_unsetUrgent(int cid)
+{
+	dyco_schedule *sched = _get_sched();
+	if (sched == NULL) {
+		return -1;
+	}
+	dyco_coroutine *co = _htable_find(&sched->cid_co_map, cid);
+	if (co == NULL) {
+		return -1;
+	}
+	CLRBIT(co->status, COROUTINE_FLAGS_URGENT);
 	return 0;
 }
 
