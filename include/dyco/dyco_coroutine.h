@@ -42,8 +42,8 @@
 #define		DYCO_DEFAULT_STACKSIZE		(16 * 1024)
 #define		DYCO_DEFAULT_TIMEOUT		10000000
 #define		DYCO_DEFAULT_CHANNELSIZE	256
-#define		DYCO_URGENT_MAXEXEC		16
-#define		DYCO_URGENT_MAXWAIT		16
+#define		DYCO_URGENT_MAXEXEC		128
+#define		DYCO_URGENT_MAXWAIT		128
 
 // ------ 3. Data Structure Defination
 // 3.0 sublist

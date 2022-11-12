@@ -47,6 +47,7 @@ _schedule_epoll_wait(dyco_schedule *sched)
 
 	if (!TAILQ_EMPTY(&sched->ready) || !TAILQ_EMPTY(&sched->urgent_ready))
 		return epoll_wait_f(sched->epollfd, sched->eventlist, DYCO_MAX_EVENTS, 0);
+		// return 0;
 
 	uint64_t timeout = _schedule_min_timeout(sched);
 	if (timeout == 0)
@@ -305,7 +306,7 @@ dyco_schedule_run()
 			if (co == last_co_ready)
 				break;
 			if (++idx == DYCO_URGENT_MAXWAIT)
-				break;
+				break;		
 		}
 
 		// D. probing event-driven coroutines
@@ -348,6 +349,8 @@ dyco_schedule_run()
 					TAILQ_INSERT_TAIL(&sched->urgent_ready, co, ready_next);
 				else
 					TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
+				// hack
+				epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, NULL);
 			}
 			++idx;
 		}
