@@ -138,10 +138,11 @@ _waitev(int fd, unsigned int events, int timeout)
 	struct pollfd pfd;
 	pfd.fd = fd;
 	pfd.events = (short)(events & 0xffff);
-	if (timeout == 0) {
-		return poll_f(&pfd, 1, 0);
-	}
 
+	int ret = poll_f(&pfd, 1, 0);
+	if (ret > 0 || timeout == 0)
+		return ret;
+	
 	dyco_schedule *sched = _get_sched();
 	DYCO_MUST(sched != NULL);
 	dyco_coroutine *co = sched->curr_thread;

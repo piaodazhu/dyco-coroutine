@@ -1,4 +1,5 @@
 #include "dyco/dyco_coroutine.h"
+#include <arpa/inet.h>
 
 #define TIMEOUT_DEFAULT		3000
 #define TIMEOUT_INFINIT		-1
@@ -31,7 +32,7 @@ dyco_accept(int fd, struct sockaddr *addr, socklen_t *len)
 
 	while (1)
 	{
-		_waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
 		sockfd = accept_f(fd, addr, len);
 		if (sockfd < 0)
@@ -40,14 +41,10 @@ dyco_accept(int fd, struct sockaddr *addr, socklen_t *len)
 			{
 				continue;
 			}
-			else if (errno == ECONNABORTED)
-			{
-				// printf("accept : ECONNABORTED\n");
-			}
-			else if (errno == EMFILE || errno == ENFILE)
-			{
-				// printf("accept : EMFILE || ENFILE\n");
-			}
+			
+			DYCO_WARNIF(errno == ECONNABORTED, "ECONNABORTED");
+			DYCO_WARNIF(errno == EMFILE, "EMFILE");
+			DYCO_WARNIF(errno == ENFILE, "ENFILE");
 			return -1;
 		}
 		else
@@ -78,7 +75,7 @@ dyco_connect(int fd, struct sockaddr *name, socklen_t namelen)
 
 	while (1)
 	{
-		_waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 
 		ret = connect_f(fd, name, namelen);
 		if (ret == 0)
@@ -240,7 +237,7 @@ accept(int fd, struct sockaddr *addr, socklen_t *len)
 
 	while (1)
 	{
-		_waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 
 		sockfd = accept_f(fd, addr, len);
 		if (sockfd < 0)
@@ -249,14 +246,9 @@ accept(int fd, struct sockaddr *addr, socklen_t *len)
 			{
 				continue;
 			}
-			else if (errno == ECONNABORTED)
-			{
-				// printf("accept : ECONNABORTED\n");
-			}
-			else if (errno == EMFILE || errno == ENFILE)
-			{
-				// printf("accept : EMFILE || ENFILE\n");
-			}
+			DYCO_WARNIF(errno == ECONNABORTED, "ECONNABORTED");
+			DYCO_WARNIF(errno == EMFILE, "EMFILE");
+			DYCO_WARNIF(errno == ENFILE, "ENFILE");
 			return -1;
 		}
 		else
@@ -287,7 +279,7 @@ connect(int fd, const struct sockaddr *addr, socklen_t addrlen)
 
 	while (1)
 	{
-		_waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET, timeout);
+		_waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 
 		ret = connect_f(fd, addr, addrlen);
 		if (ret == 0)

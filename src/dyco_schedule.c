@@ -31,13 +31,11 @@ _schedule_get_expired(dyco_schedule *sched)
 static uint64_t 
 _schedule_min_timeout(dyco_schedule *sched)
 {
-	uint64_t now_relative_usecs = _diff_usecs(sched->birth, _usec_now());
-	uint64_t min = sched->loopwait_timeout;
-
 	dyco_coroutine *co = RB_MIN(_dyco_coroutine_rbtree_sleep, &sched->sleeping);
 	if (!co)
-		return min;
+		return sched->loopwait_timeout;
 
+	uint64_t now_relative_usecs = _diff_usecs(sched->birth, _usec_now());
 	return co->sleep_usecs > now_relative_usecs ? co->sleep_usecs - now_relative_usecs : 0;
 }
 
@@ -46,14 +44,10 @@ _schedule_epoll_wait(dyco_schedule *sched)
 {
 	if (HTABLE_EMPTY(&sched->fd_co_map)) return 0;
 
-	// fd-event-first policy
 	if (!TAILQ_EMPTY(&sched->ready))
 		return epoll_wait_f(sched->epollfd, sched->eventlist, DYCO_MAX_EVENTS, 0);
 
 	uint64_t timeout = _schedule_min_timeout(sched);
-	// if (timeout == 0) return 0;
-
-	// fd-event-first policy
 	if (timeout == 0)
 		return epoll_wait_f(sched->epollfd, sched->eventlist, DYCO_MAX_EVENTS, 0);
 	
@@ -70,7 +64,6 @@ _schedule_epoll_wait(dyco_schedule *sched)
 		}
 		break;
 	}
-
 	return nready;
 }
 
@@ -259,16 +252,14 @@ dyco_schedule_run()
 		return 0;
 	}
 	sched->status = SCHEDULE_STATUS_RUNNING;
+	
 	while (!SCHEDULE_ISDONE(sched))
 	{
 		expired = NULL;
 		while ((expired = _schedule_get_expired(sched)) != NULL)
 		{
-			_resume(expired);
-			if (sched->status == SCHEDULE_STATUS_STOPPED)
-				return 1;
-			else if (sched->status == SCHEDULE_STATUS_ABORTED)
-				return -1;
+			SETBIT(expired->status, COROUTINE_STATUS_READY);
+			TAILQ_INSERT_TAIL(&sched->ready, expired, ready_next);
 		}
 
 		last_co_ready = TAILQ_LAST(&sched->ready, _dyco_coroutine_queue);
@@ -288,22 +279,45 @@ dyco_schedule_run()
 		}
 
 		nready = _schedule_epoll_wait(sched);
-		while (nready)
+		if (nready == 0)
+			continue;
+
+		int idx = 0;
+#ifdef	DYCO_RANDOM_WAITFD		
+		int idxarray[DYCO_MAX_EVENTS];
+		int ridx = 0, tmp = 0;
+		while (idx < nready) {
+			idxarray[idx] = idx;
+			++idx;
+		}
+		idx = nready - 1;
+		while (idx > 2) {
+			ridx = rand() % idx;
+			tmp = idxarray[idx];
+			idxarray[idx] = idxarray[ridx];
+			idxarray[ridx] = tmp;
+			--idx;
+		}
+#endif
+		while (idx < nready)
 		{
-			int idx = --nready;
+#ifdef	DYCO_RANDOM_WAITFD
+			struct epoll_event *ev = sched->eventlist + idxarray[idx];
+#else
 			struct epoll_event *ev = sched->eventlist + idx;
+#endif
+			
 			int fd = ev->data.fd;
 
 			dyco_coroutine *co = _schedule_get_waitco(sched, fd);
 			if (co != NULL)
 			{
-				_resume(co);
-				if (sched->status == SCHEDULE_STATUS_STOPPED)
-					return 1;
-				else if (sched->status == SCHEDULE_STATUS_DONE)
-					return 0;
+				SETBIT(co->status, COROUTINE_STATUS_READY);
+				TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
 			}
+			++idx;
 		}
+		
 	}
 	sched->status = SCHEDULE_STATUS_DONE;
 	return 0;

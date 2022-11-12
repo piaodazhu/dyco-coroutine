@@ -36,10 +36,11 @@
 // ------ 2. User Configurations
 #define		COROUTINE_HOOK
 #define		DYCO_SSL_ENABLE
-#define		DYCO_MAX_EVENTS			256
+// #define 	DYCO_RANDOM_WAITFD
+#define		DYCO_MAX_EVENTS			1024
 #define		DYCO_MAX_STACKSIZE		(64 * 1024)
 #define		DYCO_DEFAULT_STACKSIZE		(16 * 1024)
-#define		DYCO_DEFAULT_TIMEOUT		3000000
+#define		DYCO_DEFAULT_TIMEOUT		10000000
 #define		DYCO_DEFAULT_CHANNELSIZE	256
 
 // ------ 3. Data Structure Defination

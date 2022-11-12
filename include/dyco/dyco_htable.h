@@ -3,8 +3,8 @@
 
 #include <stdlib.h>
 
-#define DYCO_HTABLE_MAXWITDH		16
-#define DYCO_HTABLE_DEFAULTWITDH	8
+#define DYCO_HTABLE_MAXWITDH		24
+#define DYCO_HTABLE_DEFAULTWITDH	16
 #define DYCO_HTABLE_MAXALPHA		2
 
 typedef struct _dyco_hentry dyco_hentry;
