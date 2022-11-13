@@ -4,7 +4,7 @@
 typedef struct mcontext mcontext_t;
 typedef struct ucontext ucontext_t;
 
-extern	int		swapcontext(ucontext_t*, const ucontext_t*);
+extern	int	swapcontext(ucontext_t*, const ucontext_t*);
 extern	void	makecontext(ucontext_t*, void(*)(), int, ...);
 
 /*

@@ -13,7 +13,7 @@ sendto_t sendto_f;
 epoll_wait_t epoll_wait_f;
 poll_t poll_f;
 
-__attribute__((constructor)) static void _inithook()
+__attribute__((constructor)) static void dyco_inithook()
 {
 #ifdef COROUTINE_HOOK
 	// socket handle

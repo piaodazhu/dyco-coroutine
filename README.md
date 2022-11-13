@@ -466,10 +466,10 @@ int dyco_coroutine_isasymmetric(int cid);
 int dyco_asymcoro_create(proc_coroutine func, void *arg);
 
 // return cid on coroutine yield, 0 on coroutine finish, < 0 on error
-int dyco_asymcoro_resume(int cid);
+int dyco_asymcororesume(int cid);
 
 // interupt and go back
-void dyco_asymcoro_yield();
+void dyco_asymcoroyield();
 
 void dyco_asymcoro_free(int cid);
 

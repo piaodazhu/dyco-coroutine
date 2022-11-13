@@ -19,8 +19,8 @@ void fibo_gen(void *arg)
 	}
 	*number = 1;
 
-	dyco_asymcoro_yield(); // yield 1
-	dyco_asymcoro_yield(); // yield 1
+	dyco_asymcoroyield(); // yield 1
+	dyco_asymcoroyield(); // yield 1
 
 	int i = 2;
 	while (i < *times) {
@@ -28,7 +28,7 @@ void fibo_gen(void *arg)
 		f1 = f2;
 		f2 = f3;
 		*number = f3;
-		dyco_asymcoro_yield();  // yield 2 3 5 8 ...
+		dyco_asymcoroyield();  // yield 2 3 5 8 ...
 		++i;
 	}
 	*number = -1;
@@ -48,7 +48,7 @@ void foo(void *arg)
 	if (ret != 0) {
 		return;
 	}
-	ret = dyco_asymcoro_resume(fibogencid);
+	ret = dyco_asymcororesume(fibogencid);
 
 	printf("[+] coro %d get: %d. ret = %d\n", dyco_coroutine_coroID(), *number, ret);
 	if (ret == 0) {
@@ -72,7 +72,7 @@ void bar(void *arg)
 	dyco_asymcoro_setUdata(cid, number);
 	
 	dyco_asymcoro_setStack(cid, NULL, 4096);
-	while (dyco_asymcoro_resume(cid)) {
+	while (dyco_asymcororesume(cid)) {
 		printf("[+] coro %d get %d\n", dyco_coroutine_coroID(), *number);
 		dyco_coroutine_sleep(sleeptime);
 	}
@@ -93,7 +93,7 @@ int main()
 	dyco_asymcoro_setUdata(cid, number);
 	
 	dyco_asymcoro_setStack(cid, NULL, 4096);
-	while (dyco_asymcoro_resume(cid)) {
+	while (dyco_asymcororesume(cid)) {
 		printf("%dth generate: %d\n", ++i, *number);
 	}
 	dyco_asymcoro_free(cid);

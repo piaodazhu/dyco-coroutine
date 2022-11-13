@@ -1,17 +1,17 @@
-#ifndef _DYCO_WAITGROUP_H
-#define _DYCO_WAITGROUP_H
+#ifndef DYCO_WAITGROUP_H
+#define DYCO_WAITGROUP_H
 
 #include "dyco/dyco_coroutine.h"
 
 static void
-_wg_notify(int notifyfd, int finished_num)
+wg_notify(int notifyfd, int finished_num)
 {
 	DYCO_MUST(eventfd_write(notifyfd, (eventfd_t)finished_num) == 0);
 	return;
 }
 
 void
-_wgsublist_free(void *head)
+wgsublist_free(void *head)
 {
 	dyco_sublist *ptr = head;
 	dyco_sublist *next;
@@ -25,7 +25,7 @@ _wgsublist_free(void *head)
 }
 
 dyco_waitgroup*
-dyco_waitgroup_create(int __suggest_size)
+dyco_waitgroup_create(int suggest_size)
 {
 	dyco_waitgroup *wg = (dyco_waitgroup*)malloc(sizeof(dyco_waitgroup));
 	if (wg == NULL) 
@@ -34,58 +34,58 @@ dyco_waitgroup_create(int __suggest_size)
 	wg->finished = 0;
 
 	int width = 1;
-	if (__suggest_size <= 0) {
+	if (suggest_size <= 0) {
 		width = DYCO_HTABLE_DEFAULTWITDH;
 	} 
-	else if (__suggest_size > 65536) {
+	else if (suggest_size > 65536) {
 		width = DYCO_HTABLE_MAXWITDH;
 	}
 	else {
-		while ((__suggest_size >> width) != 0) ++width;
+		while ((suggest_size >> width) != 0) ++width;
 	}
-	_htable_init(&wg->cid_set, width);
-	_htable_init(&wg->target_sublist_map, width);
+	htable_init(&wg->cid_set, width);
+	htable_init(&wg->target_sublist_map, width);
 	wg->final_sublist = NULL;
 	return wg;
 }
 
 
 void
-dyco_waitgroup_destroy(dyco_waitgroup** __group)
+dyco_waitgroup_destroy(dyco_waitgroup** group)
 {
-	dyco_waitgroup *wg = *__group;
+	dyco_waitgroup *wg = *group;
 	if (wg == NULL) {
 		return;
 	}
-	_wgsublist_free(wg->final_sublist);
-	_htable_clear_with_freecb(&wg->target_sublist_map, _wgsublist_free);
-	_htable_clear(&wg->cid_set);
+	wgsublist_free(wg->final_sublist);
+	htable_clear_with_freecb(&wg->target_sublist_map, wgsublist_free);
+	htable_clear(&wg->cid_set);
 	free(wg);
-	*__group = NULL;
+	*group = NULL;
 	return;
 }
 
 
 int
-dyco_waitgroup_add(dyco_waitgroup* __group, int __cid)
+dyco_waitgroup_add(dyco_waitgroup* group, int cid)
 {
-	if (__group == NULL)
+	if (group == NULL)
 		return -1;
-	int ret = _htable_insert(&__group->cid_set, __cid, NULL);
+	int ret = htable_insert(&group->cid_set, cid, NULL);
 	if (ret != 1)
 		return 0;
-	++(__group->tot_size);
+	++(group->tot_size);
 	return 1;
 }
 
 
 int
-dyco_waitgroup_done(dyco_waitgroup* __group)
+dyco_waitgroup_done(dyco_waitgroup* group)
 {
-	if (__group == NULL)
+	if (group == NULL)
 		return -1;
 	
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -93,27 +93,27 @@ dyco_waitgroup_done(dyco_waitgroup* __group)
 	if (co == NULL) {
 		return -1;
 	}
-	int ret = _htable_contains(&__group->cid_set, co->cid);
+	int ret = htable_contains(&group->cid_set, co->cid);
 	if (ret != 1) {
 		return 0;
 	}
 	
-	++(__group->finished);
+	++(group->finished);
 	// notify target subscribe list
-	dyco_sublist *tslist = _htable_find(&__group->target_sublist_map, __group->finished);
+	dyco_sublist *tslist = htable_find(&group->target_sublist_map, group->finished);
 	if (tslist != NULL) {
 		dyco_sublist *ptr = tslist;
 		while (ptr != NULL) {
-			_wg_notify(ptr->notifyfd, __group->finished);
+			wg_notify(ptr->notifyfd, group->finished);
 			ptr = ptr->next;
 		}
 	}
 
 	// notify finnal list
-	if (__group->finished == __group->tot_size) {
-		dyco_sublist *ptr = __group->final_sublist;
+	if (group->finished == group->tot_size) {
+		dyco_sublist *ptr = group->final_sublist;
 		while (ptr != NULL) {
-			_wg_notify(ptr->notifyfd, __group->finished);
+			wg_notify(ptr->notifyfd, group->finished);
 			ptr = ptr->next;
 		}
 	}
@@ -123,17 +123,17 @@ dyco_waitgroup_done(dyco_waitgroup* __group)
 
 
 int
-dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
+dyco_waitgroup_wait(dyco_waitgroup* group, int target, int timeout)
 {
-	if (__group == NULL) {
+	if (group == NULL) {
 		return -1;
 	}
 
-	if (__timeout == 0) {
-		return __group->finished;
+	if (timeout == 0) {
+		return group->finished;
 	}
 
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -146,10 +146,10 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 	eventfd_t count;
 	int ret;
 
-	if (__target <= 0) {
+	if (target <= 0) {
 		// wait until all tasks finishes
-		if (__group->finished == __group->tot_size)
-			return __group->finished;
+		if (group->finished == group->tot_size)
+			return group->finished;
 		
 		int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 		DYCO_MUSTNOT(notifyfd == -1);
@@ -162,25 +162,25 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		sub->notifyfd = notifyfd;
 		sub->next = NULL;
 
-		if (__group->final_sublist == NULL) {
-			__group->final_sublist = sub;
+		if (group->final_sublist == NULL) {
+			group->final_sublist = sub;
 		} else {
-			sub->next = __group->final_sublist->next;
-			__group->final_sublist->next = sub;
+			sub->next = group->final_sublist->next;
+			group->final_sublist->next = sub;
 		}
 		
-		_schedule_sched_waitR(co, notifyfd);
-		_schedule_sched_sleep(co, __timeout);
-		_yield(co);
-		_schedule_cancel_sleep(co);
-		_schedule_cancel_wait(co, notifyfd);
+		schedule_sched_waitR(co, notifyfd);
+		schedule_sched_sleep(co, timeout);
+		yield(co);
+		schedule_cancel_sleep(co);
+		schedule_cancel_wait(co, notifyfd);
 
 		ret = eventfd_read(notifyfd, &count);
 
-		dyco_sublist* pre = __group->final_sublist;
+		dyco_sublist* pre = group->final_sublist;
 		dyco_sublist* ptr = pre->next;
 		if (pre->notifyfd == notifyfd) {
-			__group->final_sublist = ptr;
+			group->final_sublist = ptr;
 			close(pre->notifyfd);
 			free(pre);
 		} else {
@@ -196,9 +196,9 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 			}
 		}
 	} else {
-		// wait until __target tasks finishes
-		if (__group->finished >= __target)
-			return __target;
+		// wait until target tasks finishes
+		if (group->finished >= target)
+			return target;
 		
 		int notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 		DYCO_MUSTNOT(notifyfd == -1);
@@ -212,25 +212,25 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		sub->notifyfd = notifyfd;
 		sub->next = NULL;
 
-		dyco_sublist* sublist = _htable_find(&__group->target_sublist_map, __target);
+		dyco_sublist* sublist = htable_find(&group->target_sublist_map, target);
 		sub->next = sublist;
-		_htable_insert(&__group->target_sublist_map, __target, sub);
+		htable_insert(&group->target_sublist_map, target, sub);
 
-		_schedule_sched_waitR(co, notifyfd);
-		_schedule_sched_sleep(co, __timeout);
-		_yield(co);
-		_schedule_cancel_sleep(co);
-		_schedule_cancel_wait(co, notifyfd);
+		schedule_sched_waitR(co, notifyfd);
+		schedule_sched_sleep(co, timeout);
+		yield(co);
+		schedule_cancel_sleep(co);
+		schedule_cancel_wait(co, notifyfd);
 
 		ret = eventfd_read(notifyfd, &count);
 
-		dyco_sublist* pre = _htable_find(&__group->target_sublist_map, __target);
+		dyco_sublist* pre = htable_find(&group->target_sublist_map, target);
 		dyco_sublist* ptr = pre->next;
 		if (pre->notifyfd == notifyfd) {
 			if (ptr != NULL)
-				_htable_insert(&__group->target_sublist_map, __target, ptr);
+				htable_insert(&group->target_sublist_map, target, ptr);
 			else	
-				_htable_delete(&__group->target_sublist_map, __target, NULL);
+				htable_delete(&group->target_sublist_map, target, NULL);
 			close(pre->notifyfd);
 			free(pre);
 		} else {

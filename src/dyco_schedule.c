@@ -2,7 +2,7 @@
 
 atomic_uint sched_id_gen;
 
-RB_GENERATE(_dyco_coroutine_rbtree_sleep, _dyco_coroutine, sleep_node, _coroutine_sleep_cmp);
+RB_GENERATE(dyco_coroutine_rbtree_sleep, dyco_coroutine, sleep_node, coroutine_sleep_cmp);
 
 #define SCHEDULE_ISDONE(sched)		(HTABLE_EMPTY(&sched->fd_co_map) && \
 				 	RB_EMPTY(&sched->sleeping) && \
@@ -12,16 +12,16 @@ RB_GENERATE(_dyco_coroutine_rbtree_sleep, _dyco_coroutine, sleep_node, _coroutin
 extern void dyco_coropool_return(dyco_coroutine *co);
 
 static dyco_coroutine*
-_schedule_get_expired(dyco_schedule *sched)
+schedule_get_expired(dyco_schedule *sched)
 {
-	uint64_t t_diff_usecs = _diff_usecs(sched->birth, _usec_now());
-	dyco_coroutine *co = RB_MIN(_dyco_coroutine_rbtree_sleep, &sched->sleeping);
+	uint64_t tdiff_usecs = diff_usecs(sched->birth, usec_now());
+	dyco_coroutine *co = RB_MIN(dyco_coroutine_rbtree_sleep, &sched->sleeping);
 
 	if (co == NULL)
 		return NULL;
-	if (co->sleep_usecs <= t_diff_usecs)
+	if (co->sleep_usecs <= tdiff_usecs)
 	{
-		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
+		RB_REMOVE(dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
 		CLRBIT(co->status, COROUTINE_STATUS_SLEEPING);
 		SETBIT(co->status, COROUTINE_FLAGS_EXPIRED);
 		return co;
@@ -30,18 +30,18 @@ _schedule_get_expired(dyco_schedule *sched)
 }
 
 static uint64_t 
-_schedule_min_timeout(dyco_schedule *sched)
+schedule_min_timeout(dyco_schedule *sched)
 {
-	dyco_coroutine *co = RB_MIN(_dyco_coroutine_rbtree_sleep, &sched->sleeping);
+	dyco_coroutine *co = RB_MIN(dyco_coroutine_rbtree_sleep, &sched->sleeping);
 	if (!co)
 		return sched->loopwait_timeout;
 
-	uint64_t now_relative_usecs = _diff_usecs(sched->birth, _usec_now());
+	uint64_t now_relative_usecs = diff_usecs(sched->birth, usec_now());
 	return co->sleep_usecs > now_relative_usecs ? co->sleep_usecs - now_relative_usecs : 0;
 }
 
 static int 
-_schedule_epoll_wait(dyco_schedule *sched)
+schedule_epoll_wait(dyco_schedule *sched)
 {
 	if (HTABLE_EMPTY(&sched->fd_co_map)) return 0;
 
@@ -49,7 +49,7 @@ _schedule_epoll_wait(dyco_schedule *sched)
 		return epoll_wait_f(sched->epollfd, sched->eventlist, DYCO_MAX_EVENTS, 0);
 		// return 0;
 
-	uint64_t timeout = _schedule_min_timeout(sched);
+	uint64_t timeout = schedule_min_timeout(sched);
 	if (timeout == 0)
 		return epoll_wait_f(sched->epollfd, sched->eventlist, DYCO_MAX_EVENTS, 0);
 	
@@ -70,10 +70,10 @@ _schedule_epoll_wait(dyco_schedule *sched)
 }
 
 dyco_coroutine*
-_schedule_get_waitco(dyco_schedule *sched, int fd)
+schedule_get_waitco(dyco_schedule *sched, int fd)
 {
 
-	return (dyco_coroutine*)_htable_find(&sched->fd_co_map, fd);
+	return (dyco_coroutine*)htable_find(&sched->fd_co_map, fd);
 }
 
 void 
@@ -87,8 +87,8 @@ dyco_schedule_free(dyco_schedule *sched)
 	{
 		free(sched->stack);
 	}
-	_htable_clear(&sched->fd_co_map);
-	_htable_clear(&sched->cid_co_map);
+	htable_clear(&sched->fd_co_map);
+	htable_clear(&sched->cid_co_map);
 
 	free(sched);
 
@@ -120,7 +120,7 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 	pthread_t tid = pthread_self();
 	sched->sched_id = ++sched_id_gen;
 	sched->loopwait_timeout = loopwait_timeout ? loopwait_timeout : DYCO_DEFAULT_TIMEOUT;
-	sched->birth = _usec_now();
+	sched->birth = usec_now();
 	sched->coro_count = 0;
 	// sched->_cid_gen = (sched->sched_id % 0xf0) * 1000000;
 	sched->_cid_gen = 0;
@@ -134,27 +134,27 @@ dyco_schedule_create(size_t stack_size, uint64_t loopwait_timeout)
 	TAILQ_INIT(&sched->ready);
 	RB_INIT(&sched->sleeping);
 
-	_htable_init(&sched->fd_co_map, 0);
-	_htable_init(&sched->cid_co_map, 0);
+	htable_init(&sched->fd_co_map, 0);
+	htable_init(&sched->cid_co_map, 0);
 
 	return sched->sched_id;
 }
 
-void _schedule_sched_sleep(dyco_coroutine *co, int msecs)
+void schedule_sched_sleep(dyco_coroutine *co, int msecs)
 {
-	dyco_coroutine *co_tmp = RB_FIND(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
+	dyco_coroutine *co_tmp = RB_FIND(dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
 	if (co_tmp != NULL)
 	{
-		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co_tmp);
+		RB_REMOVE(dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co_tmp);
 	}
 
 	if (msecs <= 0) return;
 	uint64_t usecs = msecs * 1000u;
 
-	co->sleep_usecs = _diff_usecs(co->sched->birth, _usec_now()) + usecs;
+	co->sleep_usecs = diff_usecs(co->sched->birth, usec_now()) + usecs;
 	while (msecs)
 	{
-		co_tmp = RB_INSERT(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
+		co_tmp = RB_INSERT(dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
 		if (co_tmp)
 		{
 			co->sleep_usecs++;
@@ -169,11 +169,11 @@ void _schedule_sched_sleep(dyco_coroutine *co, int msecs)
 }
 
 void
-_schedule_cancel_sleep(dyco_coroutine *co)
+schedule_cancel_sleep(dyco_coroutine *co)
 {
 	if (TESTBIT(co->status, COROUTINE_STATUS_SLEEPING))
 	{
-		RB_REMOVE(_dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
+		RB_REMOVE(dyco_coroutine_rbtree_sleep, &co->sched->sleeping, co);
 		CLRBIT(co->status, COROUTINE_STATUS_SLEEPING);
 	}
 
@@ -181,11 +181,11 @@ _schedule_cancel_sleep(dyco_coroutine *co)
 }
 
 int
-_schedule_cancel_wait(dyco_coroutine *co, int fd)
+schedule_cancel_wait(dyco_coroutine *co, int fd)
 {
 	if (TESTBIT(co->status, COROUTINE_FLAGS_WAITING)) {
 
-		_htable_delete(&co->sched->fd_co_map, fd, NULL);
+		htable_delete(&co->sched->fd_co_map, fd, NULL);
 		CLRBIT(co->status, COROUTINE_FLAGS_WAITING);
 		DYCO_MUST(epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, fd, NULL) == 0);
 		return 0;
@@ -195,50 +195,50 @@ _schedule_cancel_wait(dyco_coroutine *co, int fd)
 	
 
 void
-_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events)
+schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events)
 {
 	struct epoll_event ev;
 	ev.data.fd = fd;
 	ev.events = events;
 	DYCO_MUST(epoll_ctl(co->sched->epollfd, EPOLL_CTL_ADD, fd, &ev) == 0);
 
-	int ret = _htable_insert(&co->sched->fd_co_map, fd, co);
+	int ret = htable_insert(&co->sched->fd_co_map, fd, co);
 	assert(ret >= 0);
 	SETBIT(co->status, COROUTINE_FLAGS_WAITING);
 	return;
 }
 
 void
-_schedule_sched_waitR(dyco_coroutine *co, int fd)
+schedule_sched_waitR(dyco_coroutine *co, int fd)
 {
-	_schedule_sched_wait(co, fd, EPOLLIN | EPOLLHUP | EPOLLERR);
+	schedule_sched_wait(co, fd, EPOLLIN | EPOLLHUP | EPOLLERR);
 	return;
 }
 
 void
-_schedule_sched_waitW(dyco_coroutine *co, int fd)
+schedule_sched_waitW(dyco_coroutine *co, int fd)
 {
-	_schedule_sched_wait(co, fd, EPOLLOUT | EPOLLHUP | EPOLLERR);
+	schedule_sched_wait(co, fd, EPOLLOUT | EPOLLHUP | EPOLLERR);
 	return;
 }
 
 void
-_schedule_sched_waitRW(dyco_coroutine *co, int fd)
+schedule_sched_waitRW(dyco_coroutine *co, int fd)
 {
-	_schedule_sched_wait(co, fd, EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR);
+	schedule_sched_wait(co, fd, EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR);
 	return;
 }
 
 void
-_schedule_stop(dyco_schedule *__sched)
+schedule_stop(dyco_schedule *sched)
 {
-	__sched->status = SCHEDULE_STATUS_STOPPED;
-	__sched->curr_thread = NULL;
+	sched->status = SCHEDULE_STATUS_STOPPED;
+	sched->curr_thread = NULL;
 	return;
 }
 
 
-static void _coro_abort(void *arg)
+static void coro_abort(void *arg)
 {
 	dyco_coroutine *co = arg;
 	if (TESTBIT(co->status, COROUTINE_FLAGS_INCOROPOOL)) {
@@ -250,23 +250,23 @@ static void _coro_abort(void *arg)
 		if (TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC))
 			dyco_asymcoro_free(co->cid);
 		else
-			_freecoro(co);
+			freecoro(co);
 	}
 	return;
 }
 void
-_schedule_abort(dyco_schedule *__sched) // map!
+schedule_abort(dyco_schedule *sched) // map!
 {
-	_htable_clear_with_freecb(&__sched->cid_co_map, _coro_abort);
-	__sched->curr_thread = NULL;
-	assert(__sched->coro_count == 0);
-	__sched->status = SCHEDULE_STATUS_ABORTED;
+	htable_clear_with_freecb(&sched->cid_co_map, coro_abort);
+	sched->curr_thread = NULL;
+	assert(sched->coro_count == 0);
+	sched->status = SCHEDULE_STATUS_ABORTED;
 }
 
 int
 dyco_schedule_run()
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL)
 		return -2;
 
@@ -288,7 +288,7 @@ dyco_schedule_run()
 	{
 		// A. probing timing coroutines
 		expired = NULL;
-		while ((expired = _schedule_get_expired(sched)) != NULL)
+		while ((expired = schedule_get_expired(sched)) != NULL)
 		{
 			SETBIT(expired->status, COROUTINE_STATUS_READY);
 			if (TESTBIT(expired->status, COROUTINE_FLAGS_URGENT))
@@ -298,14 +298,14 @@ dyco_schedule_run()
 		}
 
 		// B. processing urgent ready coroutines
-		last_co_ready = TAILQ_LAST(&sched->urgent_ready, _dyco_coroutine_queue);
+		last_co_ready = TAILQ_LAST(&sched->urgent_ready, dyco_coroutine_queue);
 		idx = 0;
 		while (!TAILQ_EMPTY(&sched->urgent_ready))
 		{
 			dyco_coroutine *co = TAILQ_FIRST(&sched->urgent_ready);
 			TAILQ_REMOVE(&sched->urgent_ready, co, ready_next);
 			CLRBIT(co->status, COROUTINE_STATUS_READY);
-			_resume(co);
+			resume(co);
 			if (sched->status == SCHEDULE_STATUS_STOPPED)
 				return 1;
 			else if (sched->status == SCHEDULE_STATUS_ABORTED)
@@ -318,14 +318,14 @@ dyco_schedule_run()
 		}
 
 		// C. processing some of the ready coroutines
-		last_co_ready = TAILQ_LAST(&sched->ready, _dyco_coroutine_queue);
+		last_co_ready = TAILQ_LAST(&sched->ready, dyco_coroutine_queue);
 		idx = 0;
 		while (!TAILQ_EMPTY(&sched->ready))
 		{
 			dyco_coroutine *co = TAILQ_FIRST(&sched->ready);
 			TAILQ_REMOVE(&sched->ready, co, ready_next);
 			CLRBIT(co->status, COROUTINE_STATUS_READY);
-			_resume(co);
+			resume(co);
 			if (sched->status == SCHEDULE_STATUS_STOPPED)
 				return 1;
 			else if (sched->status == SCHEDULE_STATUS_ABORTED)
@@ -338,7 +338,7 @@ dyco_schedule_run()
 		}
 
 		// D. probing event-driven coroutines
-		nready = _schedule_epoll_wait(sched);
+		nready = schedule_epoll_wait(sched);
 		if (nready == 0)
 			continue;
 
@@ -369,7 +369,7 @@ dyco_schedule_run()
 			
 			int fd = ev->data.fd;
 
-			dyco_coroutine *co = _schedule_get_waitco(sched, fd);
+			dyco_coroutine *co = schedule_get_waitco(sched, fd);
 			if (co != NULL)
 			{
 				SETBIT(co->status, COROUTINE_STATUS_READY);
@@ -378,7 +378,7 @@ dyco_schedule_run()
 				else
 					TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
 				
-				_schedule_cancel_wait(co, fd);
+				schedule_cancel_wait(co, fd);
 			}
 			++idx;
 		}
@@ -391,7 +391,7 @@ dyco_schedule_run()
 int
 dyco_schedule_schedID()
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -401,7 +401,7 @@ dyco_schedule_schedID()
 int
 dyco_schedule_setUdata(void *udata)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -413,7 +413,7 @@ dyco_schedule_setUdata(void *udata)
 int
 dyco_schedule_getUdata(void **udata)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -425,7 +425,7 @@ dyco_schedule_getUdata(void **udata)
 int
 dyco_schedule_getCoroCount()
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}

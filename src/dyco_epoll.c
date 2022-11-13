@@ -3,7 +3,7 @@
 int
 dyco_epoll_init()
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		perror("ERROR: dyco_epoll_* can only be called inside coroutine functions!");
 		return -1;
@@ -26,9 +26,9 @@ dyco_epoll_init()
 } 
 
 int
-dyco_epoll_wait(struct epoll_event *__events, int __maxevents, int __timeout)
+dyco_epoll_wait(struct epoll_event *events, int maxevents, int timeout)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		perror("ERROR: dyco_epoll_* can only be called inside coroutine functions!");
 		return -1;
@@ -46,23 +46,23 @@ dyco_epoll_wait(struct epoll_event *__events, int __maxevents, int __timeout)
 	}
 
 	// fast return
-	if (__timeout == 0) {
-		return epoll_wait_f(co->epollfd, __events, __maxevents, 0);
+	if (timeout == 0) {
+		return epoll_wait_f(co->epollfd, events, maxevents, 0);
 	}
 
-	_schedule_sched_waitR(co, co->epollfd);
-	_schedule_sched_sleep(co, __timeout);
-	_yield(co);
-	_schedule_cancel_sleep(co);
-	_schedule_cancel_wait(co, co->epollfd);
+	schedule_sched_waitR(co, co->epollfd);
+	schedule_sched_sleep(co, timeout);
+	yield(co);
+	schedule_cancel_sleep(co);
+	schedule_cancel_wait(co, co->epollfd);
 
-	return epoll_wait_f(co->epollfd, __events, __maxevents, 0);
+	return epoll_wait_f(co->epollfd, events, maxevents, 0);
 }
 
 int
-dyco_epoll_add(int __fd, struct epoll_event *__ev)
+dyco_epoll_add(int fd, struct epoll_event *ev)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		perror("ERROR: dyco_epoll_* can only be called inside coroutine functions!");
 		return -1;
@@ -76,14 +76,14 @@ dyco_epoll_add(int __fd, struct epoll_event *__ev)
 		perror("ERROR: 3dyco_epoll_init haven't been called!");
 		return -1;
 	}
-	DYCO_MUST(epoll_ctl(co->epollfd, EPOLL_CTL_ADD, __fd, __ev) == 0);
+	DYCO_MUST(epoll_ctl(co->epollfd, EPOLL_CTL_ADD, fd, ev) == 0);
 	return 0;
 }
 
 int
-dyco_epoll_del(int __fd, struct epoll_event *__ev)
+dyco_epoll_del(int fd, struct epoll_event *ev)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		perror("ERROR: dyco_epoll_* can only be called inside coroutine functions!");
 		return -1;
@@ -97,7 +97,7 @@ dyco_epoll_del(int __fd, struct epoll_event *__ev)
 		perror("ERROR: 2dyco_epoll_init haven't been called!");
 		return -1;
 	}
-	DYCO_MUST(epoll_ctl(co->epollfd, EPOLL_CTL_DEL, __fd, __ev) == 0);
+	DYCO_MUST(epoll_ctl(co->epollfd, EPOLL_CTL_DEL, fd, ev) == 0);
 
 	return 0;
 }
@@ -105,7 +105,7 @@ dyco_epoll_del(int __fd, struct epoll_event *__ev)
 void
 dyco_epoll_destroy()
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		perror("ERROR: dyco_epoll_* can only be called inside coroutine functions!");
 		return;
@@ -136,7 +136,7 @@ epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 		return epoll_wait_f(epfd, events, timeout, 0);
 	}
 
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -146,11 +146,11 @@ epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 	}
 	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
-	_schedule_sched_waitR(co, epfd);
-	_schedule_sched_sleep(co, timeout);
-	_yield(co);
-	_schedule_cancel_sleep(co);
-	_schedule_cancel_wait(co, epfd);
+	schedule_sched_waitR(co, epfd);
+	schedule_sched_sleep(co, timeout);
+	yield(co);
+	schedule_cancel_sleep(co);
+	schedule_cancel_wait(co, epfd);
 
 	return epoll_wait_f(epfd, events, maxevents, 0);
 }
@@ -162,7 +162,7 @@ poll(struct pollfd *fds, nfds_t nfds, int timeout)
 		return poll_f(fds, nfds, 0);
 	}
 
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -184,11 +184,11 @@ poll(struct pollfd *fds, nfds_t nfds, int timeout)
 		DYCO_MUST(epoll_ctl(epfd, EPOLL_CTL_ADD, fds[i].fd, &ev) == 0);
 	}
 	
-	_schedule_sched_waitR(co, epfd);
-	_schedule_sched_sleep(co, timeout);
-	_yield(co);
-	_schedule_cancel_sleep(co);
-	_schedule_cancel_wait(co, epfd);
+	schedule_sched_waitR(co, epfd);
+	schedule_sched_sleep(co, timeout);
+	yield(co);
+	schedule_cancel_sleep(co);
+	schedule_cancel_wait(co, epfd);
 
 	for (i = 0; i < nfds; i++) {
 		DYCO_MUST(epoll_ctl(epfd, EPOLL_CTL_DEL, fds[i].fd, NULL) == 0);

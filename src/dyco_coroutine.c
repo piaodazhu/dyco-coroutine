@@ -6,16 +6,16 @@ static pthread_once_t sched_key_once = PTHREAD_ONCE_INIT;
 extern void dyco_coropool_return(dyco_coroutine *co);
 
 static void 
-_sched_key_destructor(void *data)
+sched_key_destructor(void *data)
 {
 	free(data);
 }
 
 static void 
-_sched_key_creator(void)
+sched_key_creator(void)
 {
 	int ret;
-	ret = pthread_key_create(&global_sched_key, _sched_key_destructor);
+	ret = pthread_key_create(&global_sched_key, sched_key_destructor);
 	assert(ret == 0);
 	ret = pthread_setspecific(global_sched_key, NULL);
 	assert(ret == 0);
@@ -23,17 +23,17 @@ _sched_key_creator(void)
 }
 
 static void 
-_exec(void *c)
+execute(void *c)
 {
 	dyco_coroutine *co = (dyco_coroutine*)c;
 	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
 	co->func(co->arg);
 	SETBIT(co->status, COROUTINE_STATUS_EXITED);
-	_yield(co);
+	yield(co);
 }
 
 static void 
-_init_coro(dyco_coroutine *co)
+init_coro(dyco_coroutine *co)
 {
 
 	getcontext(&co->ctx);
@@ -45,14 +45,14 @@ _init_coro(dyco_coroutine *co)
 		co->ctx.uc_stack.ss_size = co->sched->stack_size;
 	}
 
-	makecontext(&co->ctx, (void (*)(void)) _exec, 1, (void*)co);
+	makecontext(&co->ctx, (void (*)(void)) execute, 1, (void*)co);
 
 	CLRBIT(co->status, COROUTINE_STATUS_NEW);
 	return;
 }
 
 void
-_savestk(dyco_coroutine *co)
+savestk(dyco_coroutine *co)
 {
 	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK))
 		return;
@@ -72,7 +72,7 @@ _savestk(dyco_coroutine *co)
 }
 
 void
-_loadstk(dyco_coroutine *co)
+loadstk(dyco_coroutine *co)
 {
 	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK))
 		return;
@@ -82,10 +82,10 @@ _loadstk(dyco_coroutine *co)
 }
 
 void 
-_yield(dyco_coroutine *co)
+yield(dyco_coroutine *co)
 {
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED) == 0) {
-		_savestk(co);
+		savestk(co);
 	}
 	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
 	swapcontext(&co->ctx, &co->sched->ctx);
@@ -93,13 +93,13 @@ _yield(dyco_coroutine *co)
 }
 
 int 
-_resume(dyco_coroutine *co)
+resume(dyco_coroutine *co)
 {
 	if (TESTBIT(co->status, COROUTINE_STATUS_NEW)) {
-		_init_coro(co);
+		init_coro(co);
 	}
 	else {
-		_loadstk(co);
+		loadstk(co);
 	}
 
 	dyco_schedule *sched = co->sched;
@@ -108,7 +108,7 @@ _resume(dyco_coroutine *co)
 	sched->curr_thread = co;
 	swapcontext(&sched->ctx, &co->ctx);
 	while (TESTBIT(co->status, COROUTINE_STATUS_SCHEDCALL)) {
-		if (_schedule_callexec(sched)) {
+		if (schedule_callexec(sched)) {
 			swapcontext(&sched->ctx, &co->ctx);
 		} else {
 			return 1;
@@ -117,11 +117,11 @@ _resume(dyco_coroutine *co)
 	sched->curr_thread = NULL;
 
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED)) {
-		_schedule_cancel_sleep(co);
+		schedule_cancel_sleep(co);
 		if (TESTBIT(co->status, COROUTINE_FLAGS_INCOROPOOL))
 			dyco_coropool_return(co);
 		else
-			_freecoro(co);
+			freecoro(co);
 		
 		return -1;
 	}
@@ -129,7 +129,7 @@ _resume(dyco_coroutine *co)
 }
 
 int
-_waitev(int fd, unsigned int events, int timeout)
+waitev(int fd, unsigned int events, int timeout)
 {
 	// events: uint32 epoll event
 	// timeout: Specifying a negative value  in  timeout  means  an infinite  timeout. Specifying  a timeout of zero causes dyco_poll_inner() to return immediately
@@ -143,7 +143,7 @@ _waitev(int fd, unsigned int events, int timeout)
 	if (ret > 0 || timeout == 0)
 		return ret;
 	
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	DYCO_MUST(sched != NULL);
 	dyco_coroutine *co = sched->curr_thread;
 	DYCO_MUST(co != NULL);
@@ -151,11 +151,11 @@ _waitev(int fd, unsigned int events, int timeout)
 	
 	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 	
-	_schedule_sched_wait(co, fd, events);
-	_schedule_sched_sleep(co, timeout);
-	_yield(co);
-	_schedule_cancel_sleep(co);
-	_schedule_cancel_wait(co, fd);
+	schedule_sched_wait(co, fd, events);
+	schedule_sched_sleep(co, timeout);
+	yield(co);
+	schedule_cancel_sleep(co);
+	schedule_cancel_wait(co, fd);
 
 
 	return poll_f(&pfd, 1, 0);
@@ -164,7 +164,7 @@ _waitev(int fd, unsigned int events, int timeout)
 int 
 dyco_coroutine_create(proc_coroutine func, void *arg) 
 {
-	dyco_coroutine *co = _newcoro();
+	dyco_coroutine *co = newcoro();
 	if (co == NULL) {
 		printf("Failed to allocate memory for new coroutine\n");
 		return -2;
@@ -173,13 +173,13 @@ dyco_coroutine_create(proc_coroutine func, void *arg)
 	co->func = func;
 	co->arg = arg;
 	
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	co->sched = sched;
 	// co->cid = sched->_cid_gen++;
 	sched->_cid_gen = (sched->_cid_gen + 1) & 0xffffff;
 	co->cid = ((sched->sched_id & 0xff) << 24) | sched->_cid_gen;
 
-	int ret = _htable_insert(&sched->cid_co_map, co->cid, co);
+	int ret = htable_insert(&sched->cid_co_map, co->cid, co);
 	DYCO_MUST(ret >= 0);
 	++sched->coro_count;
 	
@@ -194,7 +194,7 @@ dyco_coroutine_create(proc_coroutine func, void *arg)
 int 
 dyco_coroutine_create_urgent(proc_coroutine func, void *arg) 
 {
-	dyco_coroutine *co = _newcoro();
+	dyco_coroutine *co = newcoro();
 	if (co == NULL) {
 		printf("Failed to allocate memory for new coroutine\n");
 		return -2;
@@ -203,13 +203,13 @@ dyco_coroutine_create_urgent(proc_coroutine func, void *arg)
 	co->func = func;
 	co->arg = arg;
 	
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	co->sched = sched;
 	// co->cid = sched->_cid_gen++;
 	sched->_cid_gen = (sched->_cid_gen + 1) & 0xffffff;
 	co->cid = ((sched->sched_id & 0xff) << 24) | sched->_cid_gen;
 
-	int ret = _htable_insert(&sched->cid_co_map, co->cid, co);
+	int ret = htable_insert(&sched->cid_co_map, co->cid, co);
 	DYCO_MUST(ret >= 0);
 	++sched->coro_count;
 	
@@ -223,16 +223,16 @@ dyco_coroutine_create_urgent(proc_coroutine func, void *arg)
 }
 
 dyco_coroutine*
-_newcoro()
+newcoro()
 {
-	int ret = pthread_once(&sched_key_once, _sched_key_creator);
+	int ret = pthread_once(&sched_key_once, sched_key_creator);
 	DYCO_MUST(ret == 0);
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 
 	if (sched == NULL) {
 		dyco_schedule_create(0, 0);
 		
-		sched = _get_sched();
+		sched = get_sched();
 		if (sched == NULL) {
 			printf("Failed to create scheduler\n");
 			return NULL;
@@ -262,15 +262,15 @@ _newcoro()
 	return co;
 }
 void 
-_freecoro(dyco_coroutine *co) {
+freecoro(dyco_coroutine *co) {
 	if (co == NULL)
 		return;
 
 	--co->sched->coro_count;
-	_htable_delete(&co->sched->cid_co_map, co->cid, NULL);
+	htable_delete(&co->sched->cid_co_map, co->cid, NULL);
 
 	if (TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
-		_schedule_cancel_wait(co, co->epollfd);
+		schedule_cancel_wait(co, co->epollfd);
 		DYCO_MUST(epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, co->epollfd, NULL) == 0);
 		close(co->epollfd);
 	}
@@ -290,7 +290,7 @@ _freecoro(dyco_coroutine *co) {
 
 void 
 dyco_coroutine_sleep(uint32_t msecs) {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	DYCO_MUST(sched != NULL);
 	dyco_coroutine *co = sched->curr_thread;
 	DYCO_MUST(co != NULL);
@@ -306,40 +306,40 @@ dyco_coroutine_sleep(uint32_t msecs) {
 			TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
 		// printf("insert to ready queue\n");
 	} else {
-		_schedule_sched_sleep(co, msecs);
+		schedule_sched_sleep(co, msecs);
 	}
 	// printf("yed\n");
-	_yield(co);
+	yield(co);
 }
 
 int
 dyco_coroutine_waitRead(int fd, int timeout)
 {
-	return _waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout); 
+	return waitev(fd, EPOLLIN | EPOLLERR | EPOLLHUP, timeout); 
 }
 
 
 int
 dyco_coroutine_waitWrite(int fd, int timeout)
 {
-	return _waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
+	return waitev(fd, EPOLLOUT | EPOLLERR | EPOLLHUP, timeout);
 }
 
 int
 dyco_coroutine_waitRW(int fd, int timeout)
 {
-	return _waitev(fd, EPOLLOUT | EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
+	return waitev(fd, EPOLLOUT | EPOLLIN | EPOLLERR | EPOLLHUP, timeout);
 }
 
 
 int
 dyco_coroutine_setStack(int cid, void *stackptr, size_t stacksize)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
-	dyco_coroutine *co = _htable_find(&sched->cid_co_map, cid);
+	dyco_coroutine *co = htable_find(&sched->cid_co_map, cid);
 	if ((co == NULL) || (!TESTBIT(co->status, COROUTINE_STATUS_NEW))) {
 		return -1;
 	}
@@ -367,11 +367,11 @@ dyco_coroutine_setStack(int cid, void *stackptr, size_t stacksize)
 int
 dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
-	dyco_coroutine *co = _htable_find(&sched->cid_co_map, cid);
+	dyco_coroutine *co = htable_find(&sched->cid_co_map, cid);
 	if (co == NULL) {
 		return -1;
 	}
@@ -385,7 +385,7 @@ dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize)
 int
 dyco_coroutine_coroID()
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if ((sched == NULL) || (sched->curr_thread == NULL)) {
 		return -1;
 	}
@@ -395,11 +395,11 @@ dyco_coroutine_coroID()
 int
 dyco_coroutine_setUdata(int cid, void *udata)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
-	dyco_coroutine *co = _htable_find(&sched->cid_co_map, cid);
+	dyco_coroutine *co = htable_find(&sched->cid_co_map, cid);
 	if (co == NULL) {
 		return -1;
 	}
@@ -410,11 +410,11 @@ dyco_coroutine_setUdata(int cid, void *udata)
 int
 dyco_coroutine_getUdata(int cid, void **udata)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
-	dyco_coroutine *co = _htable_find(&sched->cid_co_map, cid);
+	dyco_coroutine *co = htable_find(&sched->cid_co_map, cid);
 	if (co == NULL) {
 		return -1;
 	}
@@ -425,11 +425,11 @@ dyco_coroutine_getUdata(int cid, void **udata)
 int
 dyco_coroutine_setUrgent(int cid)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
-	dyco_coroutine *co = _htable_find(&sched->cid_co_map, cid);
+	dyco_coroutine *co = htable_find(&sched->cid_co_map, cid);
 	if (co == NULL) {
 		return -1;
 	}
@@ -441,11 +441,11 @@ dyco_coroutine_setUrgent(int cid)
 int
 dyco_coroutine_unsetUrgent(int cid)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
-	dyco_coroutine *co = _htable_find(&sched->cid_co_map, cid);
+	dyco_coroutine *co = htable_find(&sched->cid_co_map, cid);
 	if (co == NULL) {
 		return -1;
 	}
@@ -456,11 +456,11 @@ dyco_coroutine_unsetUrgent(int cid)
 int
 dyco_coroutine_getSchedCount(int cid)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
-	dyco_coroutine *co = _htable_find(&sched->cid_co_map, cid);
+	dyco_coroutine *co = htable_find(&sched->cid_co_map, cid);
 	if (co == NULL) {
 		return -1;
 	}

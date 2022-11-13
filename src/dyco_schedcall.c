@@ -1,17 +1,17 @@
 #include "dyco/dyco_coroutine.h"
-extern void _savestk(dyco_coroutine *co);
+extern void savestk(dyco_coroutine *co);
 
 typedef struct {
 	int		__how;
 	sigset_t	*__set;
 	sigset_t	*__oset;
-} _sigprocmask_args;
+} sigprocmask_args;
 
-int _schedule_callexec(dyco_schedule *__sched)
+int schedule_callexec(dyco_schedule *sched)
 {
 	int shouldresume = 1;
-	_sigprocmask_args *sargs;
-	dyco_schedcall *call = &__sched->schedcall;
+	sigprocmask_args *sargs;
+	dyco_schedcall *call = &sched->schedcall;
 	switch (call->callnum) {
 		case CALLNUM_SIGPROCMASK:
 			sargs = call->arg;
@@ -19,12 +19,12 @@ int _schedule_callexec(dyco_schedule *__sched)
 			shouldresume = 1;
 			break;
 		case CALLNUM_SCHED_STOP:
-			_schedule_stop(__sched);
+			schedule_stop(sched);
 			call->ret = 0;
 			shouldresume = 0;
 			break;
 		case CALLNUM_SCHED_ABORT:
-			_schedule_abort(__sched);
+			schedule_abort(sched);
 			call->ret = 0;
 			shouldresume = 0;
 			break;
@@ -36,9 +36,9 @@ int _schedule_callexec(dyco_schedule *__sched)
 	return shouldresume;
 }
 
-int dyco_schedcall_sigprocmask(int __how, sigset_t *__set, sigset_t *__oset)
+int dyco_schedcall_sigprocmask(int how, sigset_t *set, sigset_t *oset)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		perror("schedcall can only be used when scheduler is running.\n");
 		return -1;
@@ -49,9 +49,9 @@ int dyco_schedcall_sigprocmask(int __how, sigset_t *__set, sigset_t *__oset)
 		return -1;
 	}
 
-	DYCO_MUST(sigprocmask(SIG_BLOCK, __set, NULL) == 0);
+	DYCO_MUST(sigprocmask(SIG_BLOCK, set, NULL) == 0);
 
-	_sigprocmask_args args = {__how, __set, __oset};
+	sigprocmask_args args = {how, set, oset};
 	sched->schedcall.callnum = CALLNUM_SIGPROCMASK;
 	sched->schedcall.arg = &args;
 
@@ -69,7 +69,7 @@ int dyco_schedcall_sigprocmask(int __how, sigset_t *__set, sigset_t *__oset)
 
 void dyco_schedcall_stop()
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		perror("schedcall can only be used when scheduler is running.\n");
 		return;
@@ -91,7 +91,7 @@ void dyco_schedcall_stop()
 	else
 		TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
 
-	_savestk(co);
+	savestk(co);
 	swapcontext(&co->ctx, &co->sched->ctx);
 	SETBIT(co->status, COROUTINE_STATUS_RUNNING);
 	CLRBIT(co->status, COROUTINE_STATUS_SCHEDCALL);
@@ -102,7 +102,7 @@ void dyco_schedcall_stop()
 
 void dyco_schedcall_abort()
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		perror("schedcall can only be used when scheduler is running.\n");
 		return;

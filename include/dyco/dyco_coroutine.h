@@ -1,6 +1,6 @@
 #ifndef __COROUTINE_H__
 #define __COROUTINE_H__
-#define DYCO_VERSION		"v2.1.0"
+#define DYCO_VERSION		"v2.1.1"
 
 // ------ 1. Included Headers
 #define _GNU_SOURCE
@@ -57,35 +57,35 @@ extern "C"{
 
 // ------ 3. Data Structure Defination
 // 3.0 sublist
-typedef struct _sublist dyco_sublist;
-struct _sublist {
+typedef struct notifylist dyco_sublist;
+struct notifylist {
 	int	notifyfd;
 	dyco_sublist	*next;
 };
 
 // 3.1 scheduler
-typedef struct _dyco_coroutine dyco_coroutine;
-typedef struct _dyco_coroutine_queue dyco_coroutine_queue;
-typedef struct _dyco_coroutine_rbtree_sleep dyco_coroutine_rbtree_sleep;
-typedef struct _dyco_coropool_list dyco_coropool_list;
-TAILQ_HEAD(_dyco_coroutine_queue, _dyco_coroutine);
-RB_HEAD(_dyco_coroutine_rbtree_sleep, _dyco_coroutine);
-SLIST_HEAD(_dyco_coropool_list, _dyco_coroutine);
+typedef struct dyco_coroutine dyco_coroutine;
+typedef struct dyco_coroutine_queue dyco_coroutine_queue;
+typedef struct dyco_coroutine_rbtree_sleep dyco_coroutine_rbtree_sleep;
+typedef struct dyco_coropool_list dyco_coropool_list;
+TAILQ_HEAD(dyco_coroutine_queue, dyco_coroutine);
+RB_HEAD(dyco_coroutine_rbtree_sleep, dyco_coroutine);
+SLIST_HEAD(dyco_coropool_list, dyco_coroutine);
 
-typedef struct _schedcall dyco_schedcall;
+typedef struct schedcall dyco_schedcall;
 typedef enum {
 	CALLNUM_SIGPROCMASK,
 	CALLNUM_SCHED_STOP,
 	CALLNUM_SCHED_ABORT
 } dyco_schedcall_num;
 
-struct _schedcall {
+struct schedcall {
 	dyco_schedcall_num	callnum;
 	int	ret;
 	void	*arg;
 };
 
-typedef struct _dyco_schedule dyco_schedule;
+typedef struct dyco_schedule dyco_schedule;
 typedef enum
 {
 	SCHEDULE_STATUS_READY,
@@ -95,7 +95,7 @@ typedef enum
 	SCHEDULE_STATUS_DONE
 } dyco_schedule_status;
 
-struct _dyco_schedule
+struct dyco_schedule
 {
 	// context
 	ucontext_t		ctx;
@@ -133,8 +133,8 @@ struct _dyco_schedule
 };
 
 // 3.2 coroutine
-typedef struct _coroutinepool dyco_coropool;
-struct _coroutinepool {
+typedef struct coroutinepool dyco_coropool;
+struct coroutinepool {
 	int			totalsize;
 	int			activenum;
 	int			stacksize;
@@ -163,7 +163,7 @@ typedef enum
 	COROUTINE_FLAGS_ASYMMETRIC
 } dyco_coroutine_status;
 
-struct _dyco_coroutine
+struct dyco_coroutine
 {
 	// function and arg
 	proc_coroutine		func;
@@ -198,13 +198,13 @@ struct _dyco_coroutine
 	int			sigfd;		// for wait signals
 	
 	// container node
-	TAILQ_ENTRY(_dyco_coroutine) 	ready_next;
-	SLIST_ENTRY(_dyco_coroutine) 	cpool_next;
-	RB_ENTRY(_dyco_coroutine) 	sleep_node;
+	TAILQ_ENTRY(dyco_coroutine) 	ready_next;
+	SLIST_ENTRY(dyco_coroutine) 	cpool_next;
+	RB_ENTRY(dyco_coroutine) 	sleep_node;
 };
 
 // 3.3 channel
-typedef struct _half_duplex_channel dyco_channel;
+typedef struct half_duplex_channel dyco_channel;
 typedef enum {
 	HDC_STATUS_NOP,
 	HDC_STATUS_EMPTY,
@@ -215,7 +215,7 @@ typedef enum {
 	HDC_STATUS_CANCLOSE
 } half_duplex_channel_status;
 
-struct _half_duplex_channel {
+struct half_duplex_channel {
 	size_t maxsize;
 	size_t msglen;
 	void *msg;
@@ -226,8 +226,8 @@ struct _half_duplex_channel {
 };
 
 // 3.4 pubsub
-typedef struct _waitgroup dyco_waitgroup;
-struct _waitgroup {
+typedef struct waitgroup dyco_waitgroup;
+struct waitgroup {
 	int	tot_size;
 	int	finished;
 	dyco_htable	cid_set;
@@ -236,7 +236,7 @@ struct _waitgroup {
 };
 
 // 3.5 waitgroup
-typedef struct _pubsub_channel dyco_pubsubchannel;
+typedef struct pubsub_channel dyco_pubsubchannel;
 typedef enum {
 	PSC_STATUS_NOP,
 	PSC_STATUS_EMPTY,
@@ -244,7 +244,7 @@ typedef enum {
 	PSC_STATUS_CLOSE
 } dyco_pubsub_channel_status;
 
-struct _pubsub_channel {
+struct pubsub_channel {
 	size_t	maxsize;
 	size_t	msglen;
 	void	*msg;
@@ -257,11 +257,11 @@ struct _pubsub_channel {
 };
 
 // 3.6 semaphore
-typedef struct _semaphore dyco_semaphore;
-typedef struct _sublist dyco_semwait_queue;
-typedef struct _sublist dyco_semwait_node;
+typedef struct semaphore dyco_semaphore;
+typedef struct notifylist dyco_semwait_queue;
+typedef struct notifylist dyco_semwait_node;
 
-struct _semaphore {
+struct semaphore {
 	int	semval;
 	dyco_semwait_queue	*wqueue;
 	dyco_semwait_node	*wtail;
@@ -296,29 +296,29 @@ struct _semaphore {
 					} while (0)
 extern pthread_key_t global_sched_key;
 
-static inline dyco_schedule *_get_sched()
+static inline dyco_schedule *get_sched()
 {
 	return (dyco_schedule*)pthread_getspecific(global_sched_key);
 }
 
-static inline uint64_t _diff_usecs(uint64_t t1, uint64_t t2)
+static inline uint64_t diff_usecs(uint64_t t1, uint64_t t2)
 {
 	return t2 - t1;
 }
 
-static inline int _tv_ms(struct timeval *tv)
+static inline int tv_ms(struct timeval *tv)
 {
 	return tv->tv_sec * 1000 + tv->tv_usec/1000;
 }
 
-static inline uint64_t _usec_now()
+static inline uint64_t usec_now()
 {
 	struct timeval t1 = {0, 0};
 	gettimeofday(&t1, NULL);
 	return t1.tv_sec * 1000000 + t1.tv_usec;
 }
 
-static inline int _coroutine_sleep_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
+static inline int coroutine_sleep_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
 {
 	if (co1->sleep_usecs < co2->sleep_usecs)
 		return -1;
@@ -331,25 +331,25 @@ static inline int _coroutine_sleep_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
 // ------ 5. Inner Primes
 // User DO NOT use them. Use User APIs is enough in most case.
 // 5.1 coroutine
-dyco_coroutine* _newcoro();
-void _freecoro(dyco_coroutine *co);
-void _savestk(dyco_coroutine *co);
-void _loadstk(dyco_coroutine *co);
-int _resume(dyco_coroutine *co);
-void _yield(dyco_coroutine *co);
-int _waitev(int fd, unsigned int events, int timeout);
+dyco_coroutine* newcoro();
+void freecoro(dyco_coroutine *co);
+void savestk(dyco_coroutine *co);
+void loadstk(dyco_coroutine *co);
+int resume(dyco_coroutine *co);
+void yield(dyco_coroutine *co);
+int waitev(int fd, unsigned int events, int timeout);
 
 // 5.2 scheduler
-void _schedule_sched_sleep(dyco_coroutine *co, int msecs);
-void _schedule_cancel_sleep(dyco_coroutine *co);
-void _schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events);
-void _schedule_sched_waitR(dyco_coroutine *co, int fd);
-void _schedule_sched_waitW(dyco_coroutine *co, int fd);
-void _schedule_sched_waitRW(dyco_coroutine *co, int fd);
-int _schedule_cancel_wait(dyco_coroutine *co, int fd);
-int _schedule_callexec(dyco_schedule *__sched);
-void _schedule_stop(dyco_schedule *__sched);
-void _schedule_abort(dyco_schedule *__sched);
+void schedule_sched_sleep(dyco_coroutine *co, int msecs);
+void schedule_cancel_sleep(dyco_coroutine *co);
+void schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events);
+void schedule_sched_waitR(dyco_coroutine *co, int fd);
+void schedule_sched_waitW(dyco_coroutine *co, int fd);
+void schedule_sched_waitRW(dyco_coroutine *co, int fd);
+int schedule_cancel_wait(dyco_coroutine *co, int fd);
+int schedule_callexec(dyco_schedule *sched);
+void schedule_stop(dyco_schedule *sched);
+void schedule_abort(dyco_schedule *sched);
 
 // ------ 6. User APIs
 // 6.1 coroutine & coroutines pool
@@ -387,7 +387,7 @@ int dyco_schedule_getUdata(void **udata);
 int dyco_schedule_getCoroCount();
 
 // 6.3 scheduler call
-int dyco_schedcall_sigprocmask(int __how, sigset_t *__set, sigset_t *__oset);
+int dyco_schedcall_sigprocmask(int how, sigset_t *set, sigset_t *oset);
 void dyco_schedcall_stop();
 void dyco_schedcall_abort();
 
@@ -458,8 +458,8 @@ int dyco_SSL_write(SSL *ssl, const void *buf, int num);
 // 6.12 asymmetric coroutine & asymmetric coroutines pool
 int dyco_coroutine_isasymmetric(int cid);
 int dyco_asymcoro_create(proc_coroutine func, void *arg);
-int dyco_asymcoro_resume(int cid);
-void dyco_asymcoro_yield();
+int dyco_asymcororesume(int cid);
+void dyco_asymcoroyield();
 void dyco_asymcoro_free(int cid);
 int dyco_asymcoro_coroID();
 int dyco_asymcoro_setStack(int cid, void *stackptr, size_t stacksize);

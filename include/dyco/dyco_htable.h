@@ -11,112 +11,112 @@ extern "C"{
 #define DYCO_HTABLE_DEFAULTWITDH	16
 #define DYCO_HTABLE_MAXALPHA		2
 
-typedef struct _dyco_hentry dyco_hentry;
-typedef struct _dyco_htable dyco_htable;
+typedef struct dyco_hentry dyco_hentry;
+typedef struct dyco_htable dyco_htable;
 
-struct _dyco_hentry
+struct dyco_hentry
 {
 	int id;
 	void *data;
 	dyco_hentry *next;
 };
 
-struct _dyco_htable
+struct dyco_htable
 {
-	int _width;
-	int _mask;
-	int _count;
-	dyco_hentry *_table;
+	int width;
+	int mask;
+	int count;
+	dyco_hentry *table;
 };
 
-#define HTABLE_EMPTY(ht)	((ht)->_count == 0)
-#define HTABLE_SIZE(ht)	((ht)->_count)
-static dyco_htable* _htable_create(int width);
-static int _htable_init(dyco_htable *ht, int width);
-static void _htable_clear(dyco_htable *ht);
-static void _htable_clear_with_freecb(dyco_htable *ht, void (*freecb)(void*));
-static int _htable_insert(dyco_htable *htable, int id, void *data);
-static int _htable_delete(dyco_htable *htable, int id, void **data);
-static void* _htable_find(dyco_htable *htable, int id);
-static int _htable_contains(dyco_htable *htable, int id);
-static int _htable_resize(dyco_htable *htable, int width);
-static void _htable_free(dyco_htable *htable);
+#define HTABLE_EMPTY(ht)	((ht)->count == 0)
+#define HTABLE_SIZE(ht)	((ht)->count)
+static dyco_htable* htable_create(int width);
+static int htable_init(dyco_htable *ht, int width);
+static void htable_clear(dyco_htable *ht);
+static void htable_clear_with_freecb(dyco_htable *ht, void (*freecb)(void*));
+static int htable_insert(dyco_htable *htable, int id, void *data);
+static int htable_delete(dyco_htable *htable, int id, void **data);
+static void* htable_find(dyco_htable *htable, int id);
+static int htable_contains(dyco_htable *htable, int id);
+static int htable_resize(dyco_htable *htable, int width);
+static void htable_free(dyco_htable *htable);
 
 static dyco_htable*
-_htable_create(int width)
+htable_create(int width)
 {
 	dyco_htable *ht = (dyco_htable*)malloc(sizeof(dyco_htable));
 	if (ht == NULL)
 		return NULL;
-	_htable_init(ht, width);
+	htable_init(ht, width);
 	return ht;
 }
 
 static int
-_htable_init(dyco_htable *ht, int width)
+htable_init(dyco_htable *ht, int width)
 {
 	if (width <= 0)
-		ht->_width = DYCO_HTABLE_DEFAULTWITDH;
+		ht->width = DYCO_HTABLE_DEFAULTWITDH;
 	else {
-		ht->_width = width > DYCO_HTABLE_MAXWITDH ? DYCO_HTABLE_MAXWITDH : width;
+		ht->width = width > DYCO_HTABLE_MAXWITDH ? DYCO_HTABLE_MAXWITDH : width;
 	}
 
-	int sz = (1 << ht->_width);
-	ht->_mask = sz - 1;
-	ht->_count = 0;
-	ht->_table = (dyco_hentry*)calloc(sz, sizeof(dyco_hentry));
-	if (ht->_table == NULL) {
+	int sz = (1 << ht->width);
+	ht->mask = sz - 1;
+	ht->count = 0;
+	ht->table = (dyco_hentry*)calloc(sz, sizeof(dyco_hentry));
+	if (ht->table == NULL) {
 		return -1;
 	}
 	int i;
 	for (i = 0; i < sz; i++) {
-		ht->_table[i].id = -1;
-		ht->_table[i].data = NULL;
-		ht->_table[i].next = NULL;
+		ht->table[i].id = -1;
+		ht->table[i].data = NULL;
+		ht->table[i].next = NULL;
 	}
 	return 0;
 }
 
 static void
-_htable_clear(dyco_htable *ht)
+htable_clear(dyco_htable *ht)
 {
-	if (ht->_table == NULL) 
+	if (ht->table == NULL) 
 		return;
 
 	int i;
 	dyco_hentry *pre, *ptr;
-	for (i = 0; i <= ht->_mask; i++) {
-		if (ht->_table[i].id == -1) {
+	for (i = 0; i <= ht->mask; i++) {
+		if (ht->table[i].id == -1) {
 			continue;
 		}
-		pre = ht->_table[i].next;
+		pre = ht->table[i].next;
 		while (pre != NULL) {
 			ptr = pre->next;
 			free(pre);
 			pre = ptr;
 		}
 	}
-	free(ht->_table);
-	ht->_count = 0;
-	ht->_mask = 0;
-	ht->_width = 0;
+	free(ht->table);
+	ht->count = 0;
+	ht->mask = 0;
+	ht->width = 0;
 	return;
 }
 
 static void
-_htable_clear_with_freecb(dyco_htable *ht, void (*freecb)(void*))
+htable_clear_with_freecb(dyco_htable *ht, void (*freecb)(void*))
 {
-	if (ht->_table == NULL) 
+	if (ht->table == NULL) 
 		return;
 
 	int i;
 	dyco_hentry *pre, *ptr;
-	for (i = 0; i <= ht->_mask; i++) {
-		if (ht->_table[i].id == -1) {
+	for (i = 0; i <= ht->mask; i++) {
+		if (ht->table[i].id == -1) {
 			continue;
 		}
-		freecb(ht->_table[i].data);
-		pre = ht->_table[i].next;
+		freecb(ht->table[i].data);
+		pre = ht->table[i].next;
 		while (pre != NULL) {
 			ptr = pre->next;
 			freecb(pre->data);
@@ -124,24 +124,24 @@ _htable_clear_with_freecb(dyco_htable *ht, void (*freecb)(void*))
 			pre = ptr;
 		}
 	}
-	free(ht->_table);
-	ht->_count = 0;
-	ht->_mask = 0;
-	ht->_width = 0;
+	free(ht->table);
+	ht->count = 0;
+	ht->mask = 0;
+	ht->width = 0;
 	return;
 }
 
 static int
-_htable_insert(dyco_htable *htable, int id, void *data)
+htable_insert(dyco_htable *htable, int id, void *data)
 {
-	int idx = id & htable->_mask;
-	dyco_hentry *bucket = &htable->_table[idx];
+	int idx = id & htable->mask;
+	dyco_hentry *bucket = &htable->table[idx];
 	if (bucket->id == -1) {
 		bucket->id = id;
 		bucket->data = data;
-		++htable->_count;
-		if (htable->_mask * DYCO_HTABLE_MAXALPHA == htable->_count) {
-			if (_htable_resize(htable, htable->_width + 1) < 0) {
+		++htable->count;
+		if (htable->mask * DYCO_HTABLE_MAXALPHA == htable->count) {
+			if (htable_resize(htable, htable->width + 1) < 0) {
 				return -1;
 			}
 		}
@@ -163,9 +163,9 @@ _htable_insert(dyco_htable *htable, int id, void *data)
 	newnode->data = data;
 	newnode->next = bucket->next;
 	bucket->next = newnode;
-	++htable->_count;
-	if (htable->_mask * DYCO_HTABLE_MAXALPHA == htable->_count) {
-		if (_htable_resize(htable, htable->_width + 1) < 0) {
+	++htable->count;
+	if (htable->mask * DYCO_HTABLE_MAXALPHA == htable->count) {
+		if (htable_resize(htable, htable->width + 1) < 0) {
 			return -1;
 		}
 	}
@@ -173,10 +173,10 @@ _htable_insert(dyco_htable *htable, int id, void *data)
 }
 
 static int
-_htable_delete(dyco_htable *htable, int id, void **data)
+htable_delete(dyco_htable *htable, int id, void **data)
 {
-	int idx = id & htable->_mask;
-	dyco_hentry *bucket = &htable->_table[idx];
+	int idx = id & htable->mask;
+	dyco_hentry *bucket = &htable->table[idx];
 	if (bucket->id == -1) {
 		return -1;
 	}
@@ -193,7 +193,7 @@ _htable_delete(dyco_htable *htable, int id, void **data)
 			bucket->id = -1;
 			bucket->data = NULL;
 		}
-		--htable->_count;
+		--htable->count;
 		return 0;
 	}
 	dyco_hentry *pre = bucket;
@@ -203,7 +203,7 @@ _htable_delete(dyco_htable *htable, int id, void **data)
 				*data = ptr->data;
 			pre->next = ptr->next;
 			free(ptr);
-			--htable->_count;
+			--htable->count;
 			return 0;
 		}
 		pre = ptr;
@@ -213,10 +213,10 @@ _htable_delete(dyco_htable *htable, int id, void **data)
 }
 
 static int
-_htable_delete_with_freecb(dyco_htable *htable, int id, void (*freecb)(void*))
+htable_delete_with_freecb(dyco_htable *htable, int id, void (*freecb)(void*))
 {
-	int idx = id & htable->_mask;
-	dyco_hentry *bucket = &htable->_table[idx];
+	int idx = id & htable->mask;
+	dyco_hentry *bucket = &htable->table[idx];
 	if (bucket->id == -1) {
 		return -1;
 	}
@@ -233,7 +233,7 @@ _htable_delete_with_freecb(dyco_htable *htable, int id, void (*freecb)(void*))
 			bucket->id = -1;
 			bucket->data = NULL;
 		}
-		--htable->_count;
+		--htable->count;
 		return 0;
 	}
 	dyco_hentry *pre = bucket;
@@ -243,7 +243,7 @@ _htable_delete_with_freecb(dyco_htable *htable, int id, void (*freecb)(void*))
 			if (ptr->data != NULL)
 				freecb(ptr->data);
 			free(ptr);
-			--htable->_count;
+			--htable->count;
 			return 0;
 		}
 		pre = ptr;
@@ -253,10 +253,10 @@ _htable_delete_with_freecb(dyco_htable *htable, int id, void (*freecb)(void*))
 }
 
 static void*
-_htable_find(dyco_htable *htable, int id)
+htable_find(dyco_htable *htable, int id)
 {
-	int idx = id & htable->_mask;
-	dyco_hentry *bucket = &htable->_table[idx];
+	int idx = id & htable->mask;
+	dyco_hentry *bucket = &htable->table[idx];
 	if (bucket->id == -1)
 		return NULL;
 	if (bucket->id == id)
@@ -273,10 +273,10 @@ _htable_find(dyco_htable *htable, int id)
 }
 
 static int
-_htable_contains(dyco_htable *htable, int id)
+htable_contains(dyco_htable *htable, int id)
 {
-	int idx = id & htable->_mask;
-	dyco_hentry *bucket = &htable->_table[idx];
+	int idx = id & htable->mask;
+	dyco_hentry *bucket = &htable->table[idx];
 	if (bucket->id == -1)
 		return 0;
 	if (bucket->id == id)
@@ -293,76 +293,76 @@ _htable_contains(dyco_htable *htable, int id)
 }
 
 static int
-_htable_resize(dyco_htable *htable, int width)
+htable_resize(dyco_htable *htable, int width)
 {
-	if ((width == htable->_width) || (width > DYCO_HTABLE_MAXWITDH))
+	if ((width == htable->width) || (width > DYCO_HTABLE_MAXWITDH))
 		return -1;
-	int _newsize = (1 << width);
-	int _newmask = _newsize - 1;
-	dyco_hentry* _newtable = (dyco_hentry*)calloc(_newsize, sizeof(dyco_hentry));
-	if (_newtable == NULL) {
+	int newsize = (1 << width);
+	int newmask = newsize - 1;
+	dyco_hentry* newtable = (dyco_hentry*)calloc(newsize, sizeof(dyco_hentry));
+	if (newtable == NULL) {
 		return -1;
 	}
 	
 	int i;
-	for (i = 0; i < _newsize; i++) {
-		_newtable->id = -1;
-		_newtable->data = NULL;
-		_newtable->next = NULL;
+	for (i = 0; i < newsize; i++) {
+		newtable->id = -1;
+		newtable->data = NULL;
+		newtable->next = NULL;
 	}
 
-	int _oldmask = htable->_mask;
-	dyco_hentry* _oldtable = htable->_table;
+	int oldmask = htable->mask;
+	dyco_hentry* oldtable = htable->table;
 	dyco_hentry *newnode, *next, *ptr;
-	int _newidx;
-	for (i = 0; i <= _oldmask; i++) {
-		if (_oldtable[i].id == -1) {
+	int newidx;
+	for (i = 0; i <= oldmask; i++) {
+		if (oldtable[i].id == -1) {
 			continue;
 		}
 		// first node
-		_newidx = _oldtable[i].id & _newmask;
-		if (_newtable[_newidx].id == -1) {
-			_newtable[_newidx].id = _oldtable[i].id;
-			_newtable[_newidx].data = _oldtable[i].data;
+		newidx = oldtable[i].id & newmask;
+		if (newtable[newidx].id == -1) {
+			newtable[newidx].id = oldtable[i].id;
+			newtable[newidx].data = oldtable[i].data;
 		} else {
 			newnode = (dyco_hentry*)malloc(sizeof(dyco_hentry));
 			if (newnode == NULL)
 				return -1;
-			newnode->id = _oldtable[i].id;
-			newnode->data = _oldtable[i].data;
-			newnode->next = _newtable[_newidx].next;
-			_newtable[_newidx].next = newnode;
+			newnode->id = oldtable[i].id;
+			newnode->data = oldtable[i].data;
+			newnode->next = newtable[newidx].next;
+			newtable[newidx].next = newnode;
 		}
 		// other node
-		ptr = _oldtable[i].next;
+		ptr = oldtable[i].next;
 		while (ptr != NULL) {
 			next = ptr->next;
-			_newidx = ptr->id & _newmask;
-			if (_newtable[_newidx].id == -1) {
-				_newtable[_newidx].id = ptr->id;
-				_newtable[_newidx].data = ptr->data;
+			newidx = ptr->id & newmask;
+			if (newtable[newidx].id == -1) {
+				newtable[newidx].id = ptr->id;
+				newtable[newidx].data = ptr->data;
 				free(ptr);
 			} else {
-				ptr->next = _newtable[_newidx].next;
-				_newtable[_newidx].next = ptr;
+				ptr->next = newtable[newidx].next;
+				newtable[newidx].next = ptr;
 			}
 			ptr = next;
 		}
 	}
-	free(_oldtable);
-	htable->_mask = _newmask;
-	htable->_width = width;
-	htable->_table = _newtable;
+	free(oldtable);
+	htable->mask = newmask;
+	htable->width = width;
+	htable->table = newtable;
 	return 0;
 }
 
 static void
-_htable_free(dyco_htable *htable)
+htable_free(dyco_htable *htable)
 {
 	if (htable == NULL)
 		return;
 
-	_htable_clear(htable);
+	htable_clear(htable);
 	free(htable);
 	return;
 }

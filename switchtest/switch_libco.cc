@@ -63,7 +63,7 @@ int main()
 		args[i].routine_id = i;
 		// co_create(&args[i].co, NULL, RoutineFunc, (void*)&args[i]);
 		co_create(&args[i].co, NULL, cofunc, NULL);
-		co_resume(args[i].co);
+		coresume(args[i].co);
 	}
 	co_eventloop(co_get_epoll_ct(), NULL, NULL);
 	return 0;

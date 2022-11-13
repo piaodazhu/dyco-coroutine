@@ -1,20 +1,20 @@
 #include "dyco/dyco_coroutine.h"
 
 static void
-_hdc_notify(dyco_channel* chan, int fd)
+hdc_notify(dyco_channel* chan, int fd)
 {
 	eventfd_write(fd, (eventfd_t)(chan->status));
 	return;
 }
 
 static half_duplex_channel_status
-_hdc_wait(dyco_channel* chan, int fd, int timeout)
+hdc_wait(dyco_channel* chan, int fd, int timeout)
 {
 	if (timeout == 0) {
 		return chan->status;
 	}
 
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return chan->status;
 	}
@@ -24,11 +24,11 @@ _hdc_wait(dyco_channel* chan, int fd, int timeout)
 	}
 	DYCO_MUSTNOT(TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
-	_schedule_sched_waitR(co, fd);
-	_schedule_sched_sleep(co, timeout);
-	_yield(co);
-	_schedule_cancel_sleep(co);
-	_schedule_cancel_wait(co, fd);
+	schedule_sched_waitR(co, fd);
+	schedule_sched_sleep(co, timeout);
+	yield(co);
+	schedule_cancel_sleep(co);
+	schedule_cancel_wait(co, fd);
 
 	eventfd_t count;
 	int ret;
@@ -44,7 +44,7 @@ _hdc_wait(dyco_channel* chan, int fd, int timeout)
 
 
 dyco_channel*
-dyco_channel_create(size_t __size)
+dyco_channel_create(size_t size)
 {
 	dyco_channel *chan = (dyco_channel*)malloc(sizeof(dyco_channel));
 	if (chan == NULL)
@@ -55,7 +55,7 @@ dyco_channel_create(size_t __size)
 	chan->w_notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 	DYCO_MUSTNOT(chan->w_notifyfd == -1);
 
-	chan->maxsize = __size > 0 ? __size : DYCO_DEFAULT_CHANNELSIZE;
+	chan->maxsize = size > 0 ? size : DYCO_DEFAULT_CHANNELSIZE;
 	chan->msg = malloc(chan->maxsize);
 	if (chan->msg == NULL) {
 		close(chan->r_notifyfd);
@@ -72,76 +72,76 @@ dyco_channel_create(size_t __size)
 void
 dyco_channel_destroy(dyco_channel **chan)
 {
-	dyco_channel *__chan = *chan;
-	if ((__chan == NULL) || (__chan->status = HDC_STATUS_WANTCLOSE)) {
+	dyco_channel *channel = *chan;
+	if ((channel == NULL) || (channel->status = HDC_STATUS_WANTCLOSE)) {
 		return;
 	}
 
-	if (__chan->status == HDC_STATUS_WANTREAD) {
-		__chan->status = HDC_STATUS_WANTCLOSE;
-		_hdc_notify(__chan, __chan->r_notifyfd);
-		_hdc_wait(__chan, __chan->w_notifyfd, -1);
+	if (channel->status == HDC_STATUS_WANTREAD) {
+		channel->status = HDC_STATUS_WANTCLOSE;
+		hdc_notify(channel, channel->r_notifyfd);
+		hdc_wait(channel, channel->w_notifyfd, -1);
 	}
-	else if (__chan->status == HDC_STATUS_WANTWRITE) {
-		__chan->status = HDC_STATUS_WANTCLOSE;
-		_hdc_notify(__chan, __chan->w_notifyfd);
-		_hdc_wait(__chan, __chan->r_notifyfd, -1);
+	else if (channel->status == HDC_STATUS_WANTWRITE) {
+		channel->status = HDC_STATUS_WANTCLOSE;
+		hdc_notify(channel, channel->w_notifyfd);
+		hdc_wait(channel, channel->r_notifyfd, -1);
 	}
 
-	close(__chan->r_notifyfd);
-	close(__chan->w_notifyfd);
-	free(__chan->msg);
-	free(__chan);
+	close(channel->r_notifyfd);
+	close(channel->w_notifyfd);
+	free(channel->msg);
+	free(channel);
 	*chan = NULL;
 	return;
 }
 
 
 ssize_t
-dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeout)
+dyco_channel_send(dyco_channel *channel, void *buf, size_t size, int timeout)
 {
-	if ((__chan == NULL) || (__size > __chan->maxsize) || (__size == 0)) 
+	if ((channel == NULL) || (size > channel->maxsize) || (size == 0)) 
 		return -2;
 	
 	int ret = -2;
-	switch (__chan->status) {
+	switch (channel->status) {
 		case HDC_STATUS_EMPTY:
-			__chan->msglen = __size;
-			memcpy(__chan->msg, __buf, __size);
+			channel->msglen = size;
+			memcpy(channel->msg, buf, size);
 
-			__chan->status = HDC_STATUS_FULL;
-			ret = __size;
+			channel->status = HDC_STATUS_FULL;
+			ret = size;
 			break;
 
 		case HDC_STATUS_FULL:
-			__chan->status = HDC_STATUS_WANTWRITE;
+			channel->status = HDC_STATUS_WANTWRITE;
 
-			_hdc_wait(__chan, __chan->w_notifyfd, __timeout);
+			hdc_wait(channel, channel->w_notifyfd, timeout);
 
-			switch(__chan->status) {
+			switch(channel->status) {
 				case HDC_STATUS_EMPTY:
-					__chan->msglen = __size;
-					memcpy(__chan->msg, __buf, __size);
-					__chan->status = HDC_STATUS_FULL;
-					ret = __size;
+					channel->msglen = size;
+					memcpy(channel->msg, buf, size);
+					channel->status = HDC_STATUS_FULL;
+					ret = size;
 					break;
 				case HDC_STATUS_FULL:
 					DYCO_WARNIF(1, "channel is full.");
 					break;
 				case HDC_STATUS_WANTREAD:
-					__chan->msglen = __size;
-					memcpy(__chan->msg, __buf, __size);
-					__chan->status = HDC_STATUS_FULL;
-					_hdc_notify(__chan, __chan->r_notifyfd);
-					ret = __size;
+					channel->msglen = size;
+					memcpy(channel->msg, buf, size);
+					channel->status = HDC_STATUS_FULL;
+					hdc_notify(channel, channel->r_notifyfd);
+					ret = size;
 					break;
 				case HDC_STATUS_WANTWRITE:
-					__chan->status = HDC_STATUS_FULL;
+					channel->status = HDC_STATUS_FULL;
 					ret = 0;
 					break;
 				case HDC_STATUS_WANTCLOSE:
-					__chan->status = HDC_STATUS_CANCLOSE;
-					_hdc_notify(__chan, __chan->r_notifyfd);
+					channel->status = HDC_STATUS_CANCLOSE;
+					hdc_notify(channel, channel->r_notifyfd);
 				default:
 					ret = -1;
 					break;
@@ -149,13 +149,13 @@ dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeou
 			break;
 
 		case HDC_STATUS_WANTREAD:
-			__chan->msglen = __size;
-			memcpy(__chan->msg, __buf, __size);
+			channel->msglen = size;
+			memcpy(channel->msg, buf, size);
 
-			__chan->status = HDC_STATUS_FULL;
-			_hdc_notify(__chan, __chan->r_notifyfd);
+			channel->status = HDC_STATUS_FULL;
+			hdc_notify(channel, channel->r_notifyfd);
 
-			ret = __size;
+			ret = size;
 			break;
 
 		case HDC_STATUS_WANTWRITE:
@@ -172,40 +172,40 @@ dyco_channel_send(dyco_channel *__chan, void *__buf, size_t __size, int __timeou
 
 
 ssize_t
-dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __timeout)
+dyco_channel_recv(dyco_channel *channel, void *buf, size_t maxsize, int timeout)
 {
-	if ((__chan == NULL) || (__maxsize < __chan->maxsize))
+	if ((channel == NULL) || (maxsize < channel->maxsize))
 		return -2;
 
 	int ret = -2;
-	switch (__chan->status) {
+	switch (channel->status) {
 		case HDC_STATUS_EMPTY:
-			__chan->status = HDC_STATUS_WANTREAD;
+			channel->status = HDC_STATUS_WANTREAD;
 
-			_hdc_wait(__chan,  __chan->r_notifyfd, __timeout);
+			hdc_wait(channel,  channel->r_notifyfd, timeout);
 
-			switch(__chan->status) {
+			switch(channel->status) {
 				case HDC_STATUS_EMPTY:
 					DYCO_WARNIF(1, "channel is empty.");
 					break;
 				case HDC_STATUS_FULL:
-					ret = __chan->msglen;
-					memcpy(__buf, __chan->msg, ret);
-					__chan->status = HDC_STATUS_EMPTY;
+					ret = channel->msglen;
+					memcpy(buf, channel->msg, ret);
+					channel->status = HDC_STATUS_EMPTY;
 					break;
 				case HDC_STATUS_WANTREAD:
-					__chan->status = HDC_STATUS_EMPTY;
+					channel->status = HDC_STATUS_EMPTY;
 					ret = 0;
 					break;
 				case HDC_STATUS_WANTWRITE:
-					ret = __chan->msglen;
-					memcpy(__buf, __chan->msg, ret);
-					__chan->status = HDC_STATUS_EMPTY;
-					_hdc_notify(__chan, __chan->w_notifyfd);
+					ret = channel->msglen;
+					memcpy(buf, channel->msg, ret);
+					channel->status = HDC_STATUS_EMPTY;
+					hdc_notify(channel, channel->w_notifyfd);
 					break;
 				case HDC_STATUS_WANTCLOSE:
-					__chan->status = HDC_STATUS_CANCLOSE;
-					_hdc_notify(__chan, __chan->w_notifyfd);
+					channel->status = HDC_STATUS_CANCLOSE;
+					hdc_notify(channel, channel->w_notifyfd);
 				default:
 					ret = -1;
 					break;
@@ -213,21 +213,21 @@ dyco_channel_recv(dyco_channel *__chan, void *__buf, size_t __maxsize, int __tim
 			break;
 
 		case HDC_STATUS_FULL:
-			ret = __chan->msglen;
-			memcpy(__buf, __chan->msg, ret);
+			ret = channel->msglen;
+			memcpy(buf, channel->msg, ret);
 
-			__chan->status = HDC_STATUS_EMPTY;
+			channel->status = HDC_STATUS_EMPTY;
 			break;
 
 		case HDC_STATUS_WANTREAD:
 			break;
 			
 		case HDC_STATUS_WANTWRITE:
-			ret = __chan->msglen;
-			memcpy(__buf, __chan->msg, ret);
+			ret = channel->msglen;
+			memcpy(buf, channel->msg, ret);
 
-			__chan->status = HDC_STATUS_EMPTY;
-			_hdc_notify(__chan, __chan->w_notifyfd);
+			channel->status = HDC_STATUS_EMPTY;
+			hdc_notify(channel, channel->w_notifyfd);
 			break;
 
 		case HDC_STATUS_WANTCLOSE:

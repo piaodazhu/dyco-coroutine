@@ -7,7 +7,7 @@ int dyco_signal_waitchild(const pid_t child, int *status, int timeout)
 		return ret;
 	}
 
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -24,11 +24,11 @@ int dyco_signal_waitchild(const pid_t child, int *status, int timeout)
 	int sigfd = signalfd(-1, &sigmask, SFD_NONBLOCK);
 	DYCO_MUSTNOT(sigfd == -1);
 
-	_schedule_sched_waitR(co, sigfd);
-	_schedule_sched_sleep(co, timeout);
-	_yield(co);
-	_schedule_cancel_sleep(co);
-	_schedule_cancel_wait(co, sigfd);
+	schedule_sched_waitR(co, sigfd);
+	schedule_sched_sleep(co, timeout);
+	yield(co);
+	schedule_cancel_sleep(co);
+	schedule_cancel_wait(co, sigfd);
 	
 	close(sigfd);
 	return waitpid(child, status, WNOHANG | WUNTRACED);
@@ -37,7 +37,7 @@ int dyco_signal_waitchild(const pid_t child, int *status, int timeout)
 
 int dyco_signal_init(sigset_t *mask)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -62,7 +62,7 @@ int dyco_signal_init(sigset_t *mask)
 
 void dyco_signal_destroy()
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return;
 	}
@@ -85,7 +85,7 @@ void dyco_signal_destroy()
 
 int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout)
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -104,11 +104,11 @@ int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout)
 		return ret;
 	}
 
-	_schedule_sched_waitR(co, co->sigfd);
-	_schedule_sched_sleep(co, timeout);
-	_yield(co);
-	_schedule_cancel_sleep(co);
-	_schedule_cancel_wait(co, co->sigfd);
+	schedule_sched_waitR(co, co->sigfd);
+	schedule_sched_sleep(co, timeout);
+	yield(co);
+	schedule_cancel_sleep(co);
+	schedule_cancel_wait(co, co->sigfd);
 
 	return read(co->sigfd, sinfo, sizeof(struct signalfd_siginfo));
 }

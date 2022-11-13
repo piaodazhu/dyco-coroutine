@@ -1,6 +1,6 @@
 #include "dyco/dyco_coroutine.h"
 
-void _sem_notify(int fd, eventfd_t data)
+void sem_notify(int fd, eventfd_t data)
 {
 	DYCO_MUST(eventfd_write(fd, data) == 0);
 }
@@ -27,7 +27,7 @@ void dyco_semaphore_destroy(dyco_semaphore **__sem)
 	while (pre != NULL)
 	{
 		ptr = pre->next;
-		_sem_notify(pre->notifyfd, 64);
+		sem_notify(pre->notifyfd, 64);
 		pre = ptr;
 	}
 	free(sem);
@@ -54,7 +54,7 @@ int dyco_semaphore_wait(dyco_semaphore *sem, int timeout)
 		}
 	}
 
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -83,11 +83,11 @@ int dyco_semaphore_wait(dyco_semaphore *sem, int timeout)
 	}
 
 
-	_schedule_sched_waitR(co, notifyfd);
-	_schedule_sched_sleep(co, timeout);
-	_yield(co);
-	_schedule_cancel_sleep(co);
-	_schedule_cancel_wait(co, notifyfd);
+	schedule_sched_waitR(co, notifyfd);
+	schedule_sched_sleep(co, timeout);
+	yield(co);
+	schedule_cancel_sleep(co);
+	schedule_cancel_wait(co, notifyfd);
 
 	eventfd_t count;
 	int ret;
@@ -106,7 +106,7 @@ int dyco_semaphore_signal(dyco_semaphore *sem)
 		return 0;
 	}
 
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	if (sched == NULL) {
 		return -1;
 	}
@@ -123,7 +123,7 @@ int dyco_semaphore_signal(dyco_semaphore *sem)
 		sem->wqueue = head->next;
 	}
 
-	_sem_notify(head->notifyfd, 1);
+	sem_notify(head->notifyfd, 1);
 	free(head);
 	return 0;
 }

@@ -3,15 +3,15 @@
 #define dyco_coropool_available(cp)	((cp)->totalsize - (cp)->activenum)
 
 dyco_coroutine*
-_get_coro_by_cid(int cid) 
+get_coro_by_cid(int cid) 
 {
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	assert(sched != NULL);
-	return _htable_find(&sched->cid_co_map, cid);
+	return htable_find(&sched->cid_co_map, cid);
 }
 
 int
-_coro_setstack(dyco_coroutine *co, void *stackptr, size_t stacksize)
+coro_setstack(dyco_coroutine *co, void *stackptr, size_t stacksize)
 {
 	if ((co == NULL) || (!TESTBIT(co->status, COROUTINE_STATUS_NEW))) {
 		return -1;
@@ -38,21 +38,21 @@ _coro_setstack(dyco_coroutine *co, void *stackptr, size_t stacksize)
 }
 
 static void
-_cp_notify(int fd)
+cp_notify(int fd)
 {
 	DYCO_MUST(eventfd_write(fd, 1) == 0);
 	return;
 }
 
 static int
-_cp_wait(dyco_coropool* cp, int timeout)
+cp_wait(dyco_coropool* cp, int timeout)
 {
 	int remain = dyco_coropool_available(cp);
 	if (remain > 0 || timeout == 0) {
 		return remain;
 	}
 
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	DYCO_MUSTNOT(sched == NULL);
 
 	dyco_coroutine *co = sched->curr_thread;
@@ -74,11 +74,11 @@ _cp_wait(dyco_coropool* cp, int timeout)
 		ptr->next = notify;
 	}
 
-	_schedule_sched_waitR(co, notifyfd);
-	_schedule_sched_sleep(co, timeout);
-	_yield(co);
-	_schedule_cancel_sleep(co);
-	_schedule_cancel_wait(co, notifyfd);
+	schedule_sched_waitR(co, notifyfd);
+	schedule_sched_sleep(co, timeout);
+	yield(co);
+	schedule_cancel_sleep(co);
+	schedule_cancel_wait(co, notifyfd);
 
 	eventfd_t count;
 	int ret;
@@ -107,7 +107,7 @@ _cp_wait(dyco_coropool* cp, int timeout)
 
 
 dyco_coropool*
-_cp_create(int totalsize, size_t stacksize, int isasymmetric)
+cp_create(int totalsize, size_t stacksize, int isasymmetric)
 {
 	if (totalsize <= 0) return NULL;
 	dyco_coropool *cp = (dyco_coropool*)malloc(sizeof(dyco_coropool));
@@ -118,12 +118,12 @@ _cp_create(int totalsize, size_t stacksize, int isasymmetric)
 	int i, cid;
 	dyco_coroutine *cur;
 	for (i = 0; i < totalsize; ++i) {
-		cur = _newcoro();
+		cur = newcoro();
 		if (isasymmetric != 0)
 			SETBIT(cur->status, COROUTINE_FLAGS_ASYMMETRIC);
 
 		if (isasymmetric != 0 || stacksize > 0)
-			_coro_setstack(cur, NULL, stacksize);
+			coro_setstack(cur, NULL, stacksize);
 
 		SLIST_INSERT_HEAD(&cp->freelist, cur, cpool_next);
 		SETBIT(cur->status, COROUTINE_FLAGS_INCOROPOOL);
@@ -140,7 +140,7 @@ _cp_create(int totalsize, size_t stacksize, int isasymmetric)
 
 
 dyco_coropool*
-_cp_resize(dyco_coropool* cp, int newsize, int isasymmetric)
+cp_resize(dyco_coropool* cp, int newsize, int isasymmetric)
 {
 	if (cp == NULL || newsize == cp->totalsize)
 		return cp;
@@ -150,12 +150,12 @@ _cp_resize(dyco_coropool* cp, int newsize, int isasymmetric)
 	if (cp->totalsize < newsize) {
 		// increase coros
 		for (i = cp->totalsize; i < newsize; ++i) {
-			cur = _newcoro();
+			cur = newcoro();
 			if (isasymmetric != 0)
 				SETBIT(cur->status, COROUTINE_FLAGS_ASYMMETRIC);
 
 			if (isasymmetric != 0 || cp->stacksize > 0)
-				_coro_setstack(cur, NULL, cp->stacksize );
+				coro_setstack(cur, NULL, cp->stacksize );
 			
 			SLIST_INSERT_HEAD(&cp->freelist, cur, cpool_next);
 			SETBIT(cur->status, COROUTINE_FLAGS_INCOROPOOL);
@@ -164,7 +164,7 @@ _cp_resize(dyco_coropool* cp, int newsize, int isasymmetric)
 			if (cp->sublist != NULL) {
 				// notify
 				dyco_sublist *head = cp->sublist;
-				_cp_notify(head->notifyfd);
+				cp_notify(head->notifyfd);
 				cp->sublist = head->next;
 			}
 		}
@@ -178,7 +178,7 @@ _cp_resize(dyco_coropool* cp, int newsize, int isasymmetric)
 			cur = SLIST_FIRST(&cp->freelist);
 			SLIST_REMOVE_HEAD(&cp->freelist, cpool_next);
 			if (isasymmetric != 0)
-				_freecoro(cur);
+				freecoro(cur);
 			else
 				dyco_asymcoro_free(cur->cid);
 		}
@@ -189,9 +189,9 @@ _cp_resize(dyco_coropool* cp, int newsize, int isasymmetric)
 
 
 int
-_cp_destroy(dyco_coropool** _cp, int isasymmetric)
+cp_destroy(dyco_coropool** coropool, int isasymmetric)
 {
-	dyco_coropool* cp = *_cp;
+	dyco_coropool* cp = *coropool;
 	if (cp == NULL) {
 		return 0;
 	}
@@ -203,7 +203,7 @@ _cp_destroy(dyco_coropool** _cp, int isasymmetric)
 		cur = SLIST_FIRST(&cp->freelist);
 		SLIST_REMOVE_HEAD(&cp->freelist, cpool_next);
 		if (isasymmetric != 0)
-			_freecoro(cur);
+			freecoro(cur);
 		else
 			dyco_asymcoro_free(cur->cid);
 	}
@@ -212,14 +212,14 @@ _cp_destroy(dyco_coropool** _cp, int isasymmetric)
 }
 
 int
-_cp_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout, int isasymmetric, int isurgent)
+cp_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout, int isasymmetric, int isurgent)
 {
 	DYCO_MUST(func != NULL);
 	
-	dyco_schedule *sched = _get_sched();
+	dyco_schedule *sched = get_sched();
 	assert(sched != NULL);
 
-	int ret = _cp_wait(cp, timeout);
+	int ret = cp_wait(cp, timeout);
 	if (ret <= 0) {
 		return ret;
 	}
@@ -251,7 +251,7 @@ _cp_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout, int i
 	// co->cid = sched->_cid_gen++;
 	sched->_cid_gen = (sched->_cid_gen + 1) & 0xffffff;
 	co->cid = ((sched->sched_id & 0xff) << 24) | sched->_cid_gen;
-	ret = _htable_insert(&sched->cid_co_map, co->cid, co);
+	ret = htable_insert(&sched->cid_co_map, co->cid, co);
 	assert(ret >= 0);
 	++sched->coro_count;
 
@@ -273,7 +273,7 @@ _cp_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout, int i
 
 
 void
-_cp_return(dyco_coroutine *co, int isasymmetric)
+cp_return(dyco_coroutine *co, int isasymmetric)
 {
 	if (co == NULL) {
 		return;
@@ -284,10 +284,10 @@ _cp_return(dyco_coroutine *co, int isasymmetric)
 	}
 
 	--co->sched->coro_count;
-	_htable_delete(&co->sched->cid_co_map, co->cid, NULL);
+	htable_delete(&co->sched->cid_co_map, co->cid, NULL);
 
 	if (TESTBIT(co->status, COROUTINE_FLAGS_IOMULTIPLEXING)) {
-		_schedule_cancel_wait(co, co->epollfd);
+		schedule_cancel_wait(co, co->epollfd);
 		DYCO_MUST(epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, co->epollfd, NULL) == 0);
 		close(co->epollfd);
 	}
@@ -301,7 +301,7 @@ _cp_return(dyco_coroutine *co, int isasymmetric)
 	--cp->activenum;
 	if (cp->sublist != NULL) {
 		dyco_sublist *head = cp->sublist;
-		_cp_notify(head->notifyfd);
+		cp_notify(head->notifyfd);
 		cp->sublist = head->next;
 	}
 	return;
@@ -311,33 +311,33 @@ _cp_return(dyco_coroutine *co, int isasymmetric)
 dyco_coropool*
 dyco_coropool_create(int totalsize, size_t stacksize)
 {
-	return _cp_create(totalsize, stacksize, 0);
+	return cp_create(totalsize, stacksize, 0);
 }
 
 
 dyco_coropool*
 dyco_coropool_resize(dyco_coropool* cp, int newsize)
 {
-	return _cp_resize(cp, newsize, 0);
+	return cp_resize(cp, newsize, 0);
 }
 
 
 int
 dyco_coropool_destroy(dyco_coropool** cp)
 {
-	return _cp_destroy(cp, 0);
+	return cp_destroy(cp, 0);
 }
 
 int
 dyco_coropool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout)
 {
-	return _cp_obtain(cp, func, arg, timeout, 0, 0);
+	return cp_obtain(cp, func, arg, timeout, 0, 0);
 }
 
 int
 dyco_coropool_obtain_urgent(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout)
 {
-	return _cp_obtain(cp, func, arg, timeout, 0, 1);
+	return cp_obtain(cp, func, arg, timeout, 0, 1);
 }
 
 
@@ -345,27 +345,27 @@ dyco_coropool_obtain_urgent(dyco_coropool* cp, proc_coroutine func, void *arg, i
 void
 dyco_coropool_return(dyco_coroutine *co)
 {
-	_cp_return(co, 0);
+	cp_return(co, 0);
 }
 
 dyco_coropool*
 dyco_asymcpool_create(int totalsize, size_t stacksize)
 {
-	return _cp_create(totalsize, stacksize, 1);
+	return cp_create(totalsize, stacksize, 1);
 }
 
 
 dyco_coropool*
 dyco_asymcpool_resize(dyco_coropool* cp, int newsize)
 {
-	return _cp_resize(cp, newsize, 1);
+	return cp_resize(cp, newsize, 1);
 }
 
 
 int
 dyco_asymcpool_destroy(dyco_coropool** cp)
 {
-	return _cp_destroy(cp, 1);
+	return cp_destroy(cp, 1);
 }
 
 
@@ -379,13 +379,13 @@ dyco_asymcpool_available(dyco_coropool* cp)
 int
 dyco_asymcpool_obtain(dyco_coropool* cp, proc_coroutine func, void *arg, int timeout)
 {
-	return _cp_obtain(cp, func, arg, timeout, 1, 0);
+	return cp_obtain(cp, func, arg, timeout, 1, 0);
 }
 
 void
 dyco_asymcpool_return(int cid)
 {
-	dyco_coroutine *co = _get_coro_by_cid(cid);
+	dyco_coroutine *co = get_coro_by_cid(cid);
 	if (co != NULL)
-		_cp_return(co, 1);
+		cp_return(co, 1);
 }
