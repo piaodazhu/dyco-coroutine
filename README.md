@@ -29,8 +29,14 @@ Features of dyco-coroutine:
 
 ![DYCOARCH](./img/arch.png)
 
+Why choose `dyco-coroutine`?
+1. Excellent performance.
+2. Elegant programming style.
+3. No dependency and easy to build/install/link.
+4. Well-documented and actively maintained by developers.
+
 There are still some future works:
-1. Better cross-platform support. Currently the cross-platform design is derive from `jamwt/libtask`. But only Linux OS is supported. Future work can be referred to `heiher/hev-task-system` and `tboox/tbox`.
+1. Better cross-platform support. Currently the cross-platform design is derive from `jamwt/libtask`. But now only Linux OS is supported (i386 AMD64 ARM ARM64...). Future work can be referred to `heiher/hev-task-system` and `tboox/tbox`.
 2. Discover more feature requests and bugs by getting more people to use them.
 3. Performance optimization. Using ucontext predestines the framework to not be the best at switching performance. But there is still room for optimization.
 4. Simpler build solution. Don't make things more complicated.

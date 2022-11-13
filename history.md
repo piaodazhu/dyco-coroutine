@@ -1,9 +1,18 @@
+## 2022-11-13: v2.1.0 released!
+
+Updates:
+1. 2-level priority scheduling to support urgent coroutine.
+2. Adjusted the behaviors of the scheduler to make it more reasonable.
+3. Recorrect the performance evaluation.
+4. `libdyco` now can be linked with Cpp code.
+5. Improve the documents, and fix some bugs.
+
 ## 2022-11-10: v2.0.0 released!
 
 Updates:
 1. Build the testbench and conduct the performance evaluation.
 2. Add some debug macros.
-3. Add some security patch for better rubust.
+3. Add some security patches for better rubustness.
 4. Improve the documents. Bring some new plans in future works.
 
 ## 2022-11-5: v1.2.0 released!
