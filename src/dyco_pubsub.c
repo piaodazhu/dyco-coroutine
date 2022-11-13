@@ -47,18 +47,11 @@ _psc_subwait(dyco_pubsubchannel* pschan, int timeout)
 	pschan->sublist = subnode;
 	pschan->sub_num++;
 	
-	struct epoll_event ev;
-	ev.data.fd = notifyfd;
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev) == 0);
-	_schedule_sched_wait(co, notifyfd);
+	_schedule_sched_waitR(co, notifyfd);
 	_schedule_sched_sleep(co, timeout);
-
 	_yield(co);
-
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, notifyfd);
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL) == 0);
 
 	eventfd_t count;
 	int ret;
@@ -115,18 +108,11 @@ _psc_pubwait(dyco_pubsubchannel* pschan, int timeout)
 	pschan->pub_notifyfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 	DYCO_MUSTNOT(pschan->pub_notifyfd == -1);
 
-	struct epoll_event ev;
-	ev.data.fd = pschan->pub_notifyfd;
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, pschan->pub_notifyfd, &ev) == 0);
-	_schedule_sched_wait(co, pschan->pub_notifyfd);
+	_schedule_sched_waitR(co, pschan->pub_notifyfd);
 	_schedule_sched_sleep(co, timeout);
-
 	_yield(co);
-
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, pschan->pub_notifyfd);
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, pschan->pub_notifyfd, NULL) == 0);
 
 	eventfd_t count;
 	int ret;

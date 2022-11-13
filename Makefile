@@ -110,7 +110,7 @@ install: $(LIB)
 	echo "Installing done."
 
 uninstall:
-	rm -rf $(LIB_INSTALL_DIR)$(LIB)
+	rm -rf $(LIB_INSTALL_DIR)/$(LIB)
 	rm -rf $(HDR_DIR_INSTALL_DIR)/$(PROJECTNAME)
 	ldconfig
 	echo "Uninstalling done."

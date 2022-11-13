@@ -24,19 +24,11 @@ int dyco_signal_waitchild(const pid_t child, int *status, int timeout)
 	int sigfd = signalfd(-1, &sigmask, SFD_NONBLOCK);
 	DYCO_MUSTNOT(sigfd == -1);
 
-	struct epoll_event ev;
-	ev.data.fd = sigfd;
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, sigfd, &ev) == 0);
-	_schedule_sched_wait(co, sigfd);
+	_schedule_sched_waitR(co, sigfd);
 	_schedule_sched_sleep(co, timeout);
-
 	_yield(co);
-
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, sigfd);
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, sigfd, NULL) == 0);
 	
 	close(sigfd);
 	return waitpid(child, status, WNOHANG | WUNTRACED);
@@ -112,20 +104,11 @@ int dyco_signal_wait(struct signalfd_siginfo *sinfo, int timeout)
 		return ret;
 	}
 
-	struct epoll_event ev;
-	ev.data.fd = co->sigfd;
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, co->sigfd, &ev) == 0);
-	_schedule_sched_wait(co, ev.data.fd);
-	
+	_schedule_sched_waitR(co, co->sigfd);
 	_schedule_sched_sleep(co, timeout);
-	
 	_yield(co);
-
 	_schedule_cancel_sleep(co);
-
 	_schedule_cancel_wait(co, co->sigfd);
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, co->sigfd, NULL) == 0);
 
 	return read(co->sigfd, sinfo, sizeof(struct signalfd_siginfo));
 }

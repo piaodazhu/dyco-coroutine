@@ -169,18 +169,11 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 			__group->final_sublist->next = sub;
 		}
 		
-		struct epoll_event ev;
-		ev.data.fd = notifyfd;
-		ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-		DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev) == 0);
-		_schedule_sched_wait(co, notifyfd);
+		_schedule_sched_waitR(co, notifyfd);
 		_schedule_sched_sleep(co, __timeout);
-
 		_yield(co);
-
 		_schedule_cancel_sleep(co);
 		_schedule_cancel_wait(co, notifyfd);
-		DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL) == 0);
 
 		ret = eventfd_read(notifyfd, &count);
 
@@ -223,18 +216,11 @@ dyco_waitgroup_wait(dyco_waitgroup* __group, int __target, int __timeout)
 		sub->next = sublist;
 		_htable_insert(&__group->target_sublist_map, __target, sub);
 
-		struct epoll_event ev;
-		ev.data.fd = notifyfd;
-		ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-		DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev) == 0);
-		_schedule_sched_wait(co, notifyfd);
+		_schedule_sched_waitR(co, notifyfd);
 		_schedule_sched_sleep(co, __timeout);
-
 		_yield(co);
-
 		_schedule_cancel_sleep(co);
 		_schedule_cancel_wait(co, notifyfd);
-		DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL) == 0);
 
 		ret = eventfd_read(notifyfd, &count);
 

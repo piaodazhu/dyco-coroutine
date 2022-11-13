@@ -50,20 +50,11 @@ dyco_epoll_wait(struct epoll_event *__events, int __maxevents, int __timeout)
 		return epoll_wait_f(co->epollfd, __events, __maxevents, 0);
 	}
 
-	struct epoll_event ev;
-	ev.data.fd = co->epollfd;
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR;
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, co->epollfd, &ev) == 0);
-	_schedule_sched_wait(co, co->epollfd);
-
+	_schedule_sched_waitR(co, co->epollfd);
 	_schedule_sched_sleep(co, __timeout);
-
 	_yield(co);
-
 	_schedule_cancel_sleep(co);
-
 	_schedule_cancel_wait(co, co->epollfd);
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, co->epollfd, NULL) == 0);
 
 	return epoll_wait_f(co->epollfd, __events, __maxevents, 0);
 }
@@ -155,18 +146,11 @@ epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
 	}
 	assert(!TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
-	struct epoll_event ev;
-	ev.data.fd = epfd;
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, epfd, &ev) == 0);
-	_schedule_sched_wait(co, epfd);
+	_schedule_sched_waitR(co, epfd);
 	_schedule_sched_sleep(co, timeout);
-
 	_yield(co);
-
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, epfd);
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, epfd, NULL) == 0);
 
 	return epoll_wait_f(epfd, events, maxevents, 0);
 }
@@ -200,17 +184,11 @@ poll(struct pollfd *fds, nfds_t nfds, int timeout)
 		DYCO_MUST(epoll_ctl(epfd, EPOLL_CTL_ADD, fds[i].fd, &ev) == 0);
 	}
 	
-	ev.data.fd = epfd;
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, epfd, &ev) == 0);
-	_schedule_sched_wait(co, epfd);
+	_schedule_sched_waitR(co, epfd);
 	_schedule_sched_sleep(co, timeout);
-
 	_yield(co);
-
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, epfd);
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, epfd, NULL) == 0);
 
 	for (i = 0; i < nfds; i++) {
 		DYCO_MUST(epoll_ctl(epfd, EPOLL_CTL_DEL, fds[i].fd, NULL) == 0);

@@ -180,24 +180,52 @@ _schedule_cancel_sleep(dyco_coroutine *co)
 	return;
 }
 
-dyco_coroutine*
+int
 _schedule_cancel_wait(dyco_coroutine *co, int fd)
 {
-	if (co == NULL) return NULL;
-	
-	dyco_coroutine *c = NULL;
-	_htable_delete(&co->sched->fd_co_map, fd, (void**)&c);
-	CLRBIT(co->status, COROUTINE_FLAGS_WAITING);
-	assert(c != NULL);
-	return c;
+	if (TESTBIT(co->status, COROUTINE_FLAGS_WAITING)) {
+
+		_htable_delete(&co->sched->fd_co_map, fd, NULL);
+		CLRBIT(co->status, COROUTINE_FLAGS_WAITING);
+		DYCO_MUST(epoll_ctl(co->sched->epollfd, EPOLL_CTL_DEL, fd, NULL) == 0);
+		return 0;
+	}
+	return 1;
 }
+	
 
 void
-_schedule_sched_wait(dyco_coroutine *co, int fd)
+_schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events)
 {
+	struct epoll_event ev;
+	ev.data.fd = fd;
+	ev.events = events;
+	DYCO_MUST(epoll_ctl(co->sched->epollfd, EPOLL_CTL_ADD, fd, &ev) == 0);
+
 	int ret = _htable_insert(&co->sched->fd_co_map, fd, co);
 	assert(ret >= 0);
 	SETBIT(co->status, COROUTINE_FLAGS_WAITING);
+	return;
+}
+
+void
+_schedule_sched_waitR(dyco_coroutine *co, int fd)
+{
+	_schedule_sched_wait(co, fd, EPOLLIN | EPOLLHUP | EPOLLERR);
+	return;
+}
+
+void
+_schedule_sched_waitW(dyco_coroutine *co, int fd)
+{
+	_schedule_sched_wait(co, fd, EPOLLOUT | EPOLLHUP | EPOLLERR);
+	return;
+}
+
+void
+_schedule_sched_waitRW(dyco_coroutine *co, int fd)
+{
+	_schedule_sched_wait(co, fd, EPOLLIN | EPOLLOUT | EPOLLHUP | EPOLLERR);
 	return;
 }
 
@@ -349,8 +377,8 @@ dyco_schedule_run()
 					TAILQ_INSERT_TAIL(&sched->urgent_ready, co, ready_next);
 				else
 					TAILQ_INSERT_TAIL(&sched->ready, co, ready_next);
-				// hack
-				epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, NULL);
+				
+				_schedule_cancel_wait(co, fd);
 			}
 			++idx;
 		}

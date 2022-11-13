@@ -74,16 +74,11 @@ _cp_wait(dyco_coropool* cp, int timeout)
 		ptr->next = notify;
 	}
 
-	struct epoll_event ev;
-	ev.data.fd = notifyfd;
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, notifyfd, &ev) == 0);
-	_schedule_sched_wait(co, notifyfd);
+	_schedule_sched_waitR(co, notifyfd);
 	_schedule_sched_sleep(co, timeout);
 	_yield(co);
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, notifyfd);
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, notifyfd, NULL) == 0);
 
 	eventfd_t count;
 	int ret;

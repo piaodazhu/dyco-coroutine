@@ -24,17 +24,11 @@ _hdc_wait(dyco_channel* chan, int fd, int timeout)
 	}
 	DYCO_MUSTNOT(TESTBIT(co->status, COROUTINE_FLAGS_ASYMMETRIC));
 
-	struct epoll_event ev;
-	ev.data.fd = fd;
-	ev.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_ADD, fd, &ev) == 0);
-	_schedule_sched_wait(co, fd);
+	_schedule_sched_waitR(co, fd);
 	_schedule_sched_sleep(co, timeout);
 	_yield(co);
-
 	_schedule_cancel_sleep(co);
 	_schedule_cancel_wait(co, fd);
-	DYCO_MUST(epoll_ctl(sched->epollfd, EPOLL_CTL_DEL, fd, NULL) ==0);
 
 	eventfd_t count;
 	int ret;

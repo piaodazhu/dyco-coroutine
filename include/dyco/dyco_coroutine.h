@@ -332,8 +332,11 @@ int _waitev(int fd, unsigned int events, int timeout);
 // 5.2 scheduler
 void _schedule_sched_sleep(dyco_coroutine *co, int msecs);
 void _schedule_cancel_sleep(dyco_coroutine *co);
-void _schedule_sched_wait(dyco_coroutine *co, int fd);
-dyco_coroutine *_schedule_cancel_wait(dyco_coroutine *co, int fd);
+void _schedule_sched_wait(dyco_coroutine *co, int fd, unsigned int events);
+void _schedule_sched_waitR(dyco_coroutine *co, int fd);
+void _schedule_sched_waitW(dyco_coroutine *co, int fd);
+void _schedule_sched_waitRW(dyco_coroutine *co, int fd);
+int _schedule_cancel_wait(dyco_coroutine *co, int fd);
 int _schedule_callexec(dyco_schedule *__sched);
 void _schedule_stop(dyco_schedule *__sched);
 void _schedule_abort(dyco_schedule *__sched);
