@@ -524,7 +524,7 @@ void dyco_asymcpool_return(int cid);
 
 这些测试用到的工具是[NeTest](https://github.com/piaodazhu/netest.git)和`./switchtest/`下面的测试程序。
 
-结论：`dyco`的并发吞吐量接近epoll IO多路复用，远超`pthread`，和`libco`差别不大。`dyco`协程切换速度远高于`libco`，和`NtyCo`差别不大。遗憾的是，相比于`libco`，`dyco`的处理时延偏高。这部分将会在下一版本中优化。
+结论：`dyco`的并发吞吐量略低于epoll IO多路复用，明显超过超`pthread`。并且`dyco`的并发吞吐量和处理延迟非常接近`libco`。另外，`dyco`协程切换速度远高于`libco`，和`NtyCo`差别不大。
 
 # About Coroutine
 

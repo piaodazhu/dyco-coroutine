@@ -504,7 +504,7 @@ See performance evaluation in [`evaluation.txt`](./evaluation.txt).
 
 Tools for these test are [NeTest](https://github.com/piaodazhu/netest.git) and programs under `./switchtest/`.
 
-Conclusion: The concurrent throughput of `dyco` is close to epoll IO-multiplexing, and outperforms pthread. The coroutine switch speed of `dyco` is much higher than `libco`, and is the same as `NtyCo`. However, comparing with `libco`, the processing latency of `dyco` is a little bit high. This part should be optimized in next version.
+Conclusion: The concurrent throughput of `dyco` is a little lower than epoll IO-multiplexing, and outperforms pthread obviously. And the concurrent throughput and processing latency of `dyco` is very close to `libco`. Besides, The coroutine switch speed of `dyco` is much higher than `libco`, and is the same as `NtyCo`.
 
 # About Coroutine
 

@@ -1,6 +1,6 @@
 #ifndef __COROUTINE_H__
 #define __COROUTINE_H__
-#define DYCO_VERSION		"v2.0.0"
+#define DYCO_VERSION		"v2.1.0"
 
 // ------ 1. Included Headers
 #define _GNU_SOURCE
@@ -18,7 +18,13 @@
 #include <errno.h>
 #include <pthread.h>
 #include <signal.h>
-#include <stdatomic.h>
+
+#ifndef __cplusplus
+# include <stdatomic.h>
+#else
+# include <atomic>
+# define _Atomic(X) std::atomic< X >
+#endif
 
 #include <sys/time.h>
 #include <sys/poll.h>
@@ -32,6 +38,10 @@
 #include "sys_queue.h"
 #include "sys_tree.h"
 #include "dyco_htable.h"
+
+#ifdef __cplusplus 
+extern "C"{
+#endif
 
 // ------ 2. User Configurations
 #define		COROUTINE_HOOK
@@ -495,5 +505,9 @@ static char* dyco_version()
 {
 	return DYCO_VERSION;
 }
+
+#ifdef __cplusplus 
+	}
+#endif
 
 #endif

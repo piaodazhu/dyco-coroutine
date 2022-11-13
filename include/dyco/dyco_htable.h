@@ -3,6 +3,10 @@
 
 #include <stdlib.h>
 
+#ifdef __cplusplus 
+extern "C"{
+#endif
+
 #define DYCO_HTABLE_MAXWITDH		24
 #define DYCO_HTABLE_DEFAULTWITDH	16
 #define DYCO_HTABLE_MAXALPHA		2
@@ -362,5 +366,9 @@ _htable_free(dyco_htable *htable)
 	free(htable);
 	return;
 }
+
+#ifdef __cplusplus 
+	}
+#endif
 
 #endif
