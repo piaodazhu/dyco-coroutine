@@ -40,6 +40,8 @@ There are still some future works:
 2. Discover more feature requests and bugs by getting more people to use them.
 3. Performance optimization. Using ucontext predestines the framework to not be the best at switching performance. But there is still room for optimization.
 4. Simpler build solution. Don't make things more complicated.
+5. Buffered Channel.
+6. Thread-Specific Pointer Wrapper.
 
 You can give me a 🌟, or recommend it to others if you found dyco-coroutine helpful. And feel free to open issues or pull requests to make this project better. 🌈
 
