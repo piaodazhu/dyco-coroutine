@@ -42,6 +42,7 @@ There are still some future works:
 4. Simpler build solution. Don't make things more complicated.
 5. Buffered Channel.
 6. Thread-Specific Pointer Wrapper.
+7. Buffered channel.
 
 You can give me a 🌟, or recommend it to others if you found dyco-coroutine helpful. And feel free to open issues or pull requests to make this project better. 🌈
 
