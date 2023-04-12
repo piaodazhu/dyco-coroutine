@@ -43,7 +43,7 @@ schedule_min_timeout(dyco_schedule *sched)
 static int 
 schedule_epoll_wait(dyco_schedule *sched)
 {
-	if (HTABLE_EMPTY(&sched->fd_co_map)) return 0;
+	if (HTABLE_EMPTY(&sched->fd_co_map) && RB_EMPTY(&sched->sleeping)) return 0;
 
 	if (!TAILQ_EMPTY(&sched->ready) || !TAILQ_EMPTY(&sched->urgent_ready))
 		return epoll_wait_f(sched->epollfd, sched->eventlist, DYCO_MAX_EVENTS, 0);
