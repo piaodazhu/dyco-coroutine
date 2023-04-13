@@ -26,7 +26,7 @@
 # define _Atomic(X) std::atomic< X >
 #endif
 
-#include <sys/time.h>
+#include <time.h>
 #include <sys/poll.h>
 #include <sys/epoll.h>
 #include <sys/signalfd.h>
@@ -313,9 +313,9 @@ static inline int tv_ms(struct timeval *tv)
 
 static inline uint64_t usec_now()
 {
-	struct timeval t1 = {0, 0};
-	gettimeofday(&t1, NULL);
-	return t1.tv_sec * 1000000 + t1.tv_usec;
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return ts.tv_sec * 1000000 + ts.tv_nsec/1000;
 }
 
 static inline int coroutine_sleep_cmp(dyco_coroutine *co1, dyco_coroutine *co2)
