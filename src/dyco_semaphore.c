@@ -1,5 +1,7 @@
 #include "dyco/dyco_coroutine.h"
 
+#define DYCO_SEM_VALUE_MAX 0x7fffffff
+
 void sem_notify(int fd, eventfd_t data)
 {
 	DYCO_MUST(eventfd_write(fd, data) == 0);
@@ -7,7 +9,7 @@ void sem_notify(int fd, eventfd_t data)
 
 dyco_semaphore* dyco_semaphore_create(size_t value)
 {
-	if (value == 0) return NULL;
+	if (value > DYCO_SEM_VALUE_MAX) return NULL;
 	dyco_semaphore *sem = (dyco_semaphore*)malloc(sizeof(dyco_semaphore));
 	if (sem == NULL)
 		return NULL;
@@ -101,6 +103,11 @@ int dyco_semaphore_signal(dyco_semaphore *sem)
 {
 	if (sem == NULL)
 		return -1;
+
+	if (sem->semval == DYCO_SEM_VALUE_MAX) {
+		return -1;
+	}
+
 	if (sem->wqueue == NULL) {
 		++sem->semval;
 		return 0;
