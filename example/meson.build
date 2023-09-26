@@ -6,6 +6,14 @@ coropool_example = executable(
 	link_with : libdyco
 )
 
+stack_dont_overflow_example = executable(
+	'stack_dont_overflow_example',
+	'stack_dont_overflow.c',
+	include_directories : header_dir,
+	c_args : build_args,
+	link_with : libdyco
+)
+
 channel_example = executable(
 	'channel_example',
 	'channel.c',
