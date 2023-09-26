@@ -151,6 +151,7 @@ typedef enum
 	COROUTINE_STATUS_RUNNING,
 	COROUTINE_STATUS_SLEEPING,
 	COROUTINE_STATUS_SCHEDCALL,
+	COROUTINE_STATUS_KILLED,
 
 	COROUTINE_FLAGS_URGENT,
 	COROUTINE_FLAGS_OWNSTACK,
@@ -335,6 +336,8 @@ dyco_coroutine* newcoro();
 void freecoro(dyco_coroutine *co);
 void savestk(dyco_coroutine *co);
 void loadstk(dyco_coroutine *co);
+int checkstk(dyco_coroutine *co);
+void coro_abort(void *arg);
 int resume(dyco_coroutine *co);
 void yield(dyco_coroutine *co);
 int waitev(int fd, unsigned int events, int timeout);
@@ -356,6 +359,7 @@ void schedule_abort(dyco_schedule *sched);
 int dyco_coroutine_create(proc_coroutine func, void *arg);
 int dyco_coroutine_create_urgent(proc_coroutine func, void *arg);
 void dyco_coroutine_sleep(uint32_t msecs);
+void dyco_coroutine_abort();
 int dyco_coroutine_waitRead(int fd, int timeout);
 int dyco_coroutine_waitWrite(int fd, int timeout);
 int dyco_coroutine_waitRW(int fd, int timeout);
@@ -363,6 +367,8 @@ int dyco_coroutine_waitRW(int fd, int timeout);
 int dyco_coroutine_coroID();
 int dyco_coroutine_setStack(int cid, void *stackptr, size_t stacksize);
 int dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize);
+int dyco_coroutine_checkStack();
+
 int dyco_coroutine_setUdata(int cid, void *udata);
 int dyco_coroutine_getUdata(int cid, void **udata);
 int dyco_coroutine_getSchedCount(int cid);

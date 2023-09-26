@@ -231,6 +231,9 @@ int dyco_coroutine_create_urgent(proc_coroutine func, void *arg);
 
 void dyco_coroutine_sleep(uint32_t msecs);
 
+// this coroutine will abort itself but no affect other coroutines.
+void dyco_coroutine_abort();
+
 // set timeout to -1 for persistent waiting. set timeout to 0 for no waiting
 // return > 0 on success, 0 on timeout, < 0 on error
 int dyco_coroutine_waitRead(int fd, int timeout);
@@ -245,6 +248,9 @@ int dyco_coroutine_coroID();
 int dyco_coroutine_setStack(int cid, void *stackptr, size_t stacksize);
 
 int dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize);
+
+// return 1 on stack size > 7/8 of total, 0 on safe, abort coroutine on stack overflow.
+int dyco_coroutine_checkStack();
 
 // return 0 on success
 int dyco_coroutine_setUdata(int cid, void *udata);

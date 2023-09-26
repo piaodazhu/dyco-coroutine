@@ -71,6 +71,30 @@ savestk(dyco_coroutine *co)
 	return;
 }
 
+int
+checkstk(dyco_coroutine *co)
+{
+	int total_size = co->sched->stack_size;
+	int cur_size = 0;
+	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK)) {
+		total_size = co->stack_size;
+	}
+	char* top = co->sched->stack + co->sched->stack_size;
+	char dummy = 0;
+	cur_size = top - &dummy;
+	printf("[DEBUG] coroutine[%d] current running stack size is (%d/%d)\n", co->cid, cur_size, total_size);
+	if (total_size < cur_size) { // already overflow. KILL
+		printf("[FATAL] coroutine[%d] running stack overflow! (%d/%d)\n", co->cid, cur_size, total_size);
+		SETBIT(co->status, COROUTINE_STATUS_KILLED);
+		CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
+		swapcontext(&co->ctx, &co->sched->ctx);
+	} else if ((total_size - (total_size >> 3)) < cur_size) {
+		printf("[WARN] coroutine[%d] running stack almost overflow. (%d/%d)\n", co->cid, cur_size, total_size);
+		return 1;
+	}
+	return 0;
+}
+
 void
 loadstk(dyco_coroutine *co)
 {
@@ -84,6 +108,7 @@ loadstk(dyco_coroutine *co)
 void 
 yield(dyco_coroutine *co)
 {
+	checkstk(co); // auto check stack usage
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED) == 0) {
 		savestk(co);
 	}
@@ -115,6 +140,12 @@ resume(dyco_coroutine *co)
 		}
 	}
 	sched->curr_thread = NULL;
+
+	if (TESTBIT(co->status, COROUTINE_STATUS_KILLED)) {
+		schedule_cancel_sleep(co);
+		htable_delete_with_freecb(&sched->cid_co_map, co->cid, coro_abort);
+		return -1;
+	}
 
 	if (TESTBIT(co->status, COROUTINE_STATUS_EXITED)) {
 		schedule_cancel_sleep(co);
@@ -312,6 +343,17 @@ dyco_coroutine_sleep(uint32_t msecs) {
 	yield(co);
 }
 
+void 
+dyco_coroutine_abort() {
+	dyco_schedule *sched = get_sched();
+	DYCO_MUST(sched != NULL);
+	dyco_coroutine *co = sched->curr_thread;
+	DYCO_MUST(co != NULL);
+	SETBIT(co->status, COROUTINE_STATUS_KILLED);
+	CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
+	swapcontext(&co->ctx, &co->sched->ctx);
+}
+
 int
 dyco_coroutine_waitRead(int fd, int timeout)
 {
@@ -380,6 +422,16 @@ dyco_coroutine_getStack(int cid, void **stackptr, size_t *stacksize)
 	if (stacksize != NULL)
 		*stacksize = co->stack_size;
 	return TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK);
+}
+
+int
+dyco_coroutine_checkStack()
+{
+	dyco_schedule *sched = get_sched();
+	DYCO_MUST(sched != NULL);
+	dyco_coroutine *co = sched->curr_thread;
+	DYCO_MUST(co != NULL);
+	return checkstk(co);
 }
 
 int

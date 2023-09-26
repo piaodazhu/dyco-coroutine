@@ -238,7 +238,8 @@ schedule_stop(dyco_schedule *sched)
 }
 
 
-static void coro_abort(void *arg)
+void 
+coro_abort(void *arg)
 {
 	dyco_coroutine *co = arg;
 	if (TESTBIT(co->status, COROUTINE_FLAGS_INCOROPOOL)) {
