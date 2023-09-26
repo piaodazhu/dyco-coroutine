@@ -25,10 +25,10 @@
 #define NEEDSWAPCONTEXT
 #endif
 
-#if defined(__linux__) && defined(__arm__)
-#define NEEDSWAPCONTEXT
-#define NEEDARMMAKECONTEXT
-#endif
+// #if defined(__linux__) && defined(__arm__)
+// #define NEEDSWAPCONTEXT
+// #define NEEDARMMAKECONTEXT
+// #endif
 
 #if defined(__linux__) && defined(__mips__)
 #define	NEEDSWAPCONTEXT
