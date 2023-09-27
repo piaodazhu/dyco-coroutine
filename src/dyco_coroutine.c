@@ -75,15 +75,17 @@ int
 checkstk(dyco_coroutine *co)
 {
 	int total_size = co->sched->stack_size;
+	char* top = co->sched->stack + co->sched->stack_size;
 	int cur_size = 0;
 	if (TESTBIT(co->status, COROUTINE_FLAGS_OWNSTACK)) {
+		top = co->stack + co->stack_size;
 		total_size = co->stack_size;
 	}
-	char* top = co->sched->stack + co->sched->stack_size;
 	char dummy = 0;
 	cur_size = top - &dummy;
+	// printf("stacksize=%d, cosize=%d, totalsize=%d, top=%p, dummy=%p, used=%d\n", co->sched->stack_size, co->stack_size, total_size, top, &dummy, cur_size);
 	if (total_size < cur_size) { // already overflow. KILL
-		printf("[FATAL] coroutine[%d] running stack overflow! (%d/%d)\n", co->cid, cur_size, total_size);
+		// printf("[FATAL] coroutine[%d] running stack overflow! (%d/%d)\n", co->cid, cur_size, total_size);
 		SETBIT(co->status, COROUTINE_STATUS_KILLED);
 		CLRBIT(co->status, COROUTINE_STATUS_RUNNING);
 		swapcontext(&co->ctx, &co->sched->ctx);
